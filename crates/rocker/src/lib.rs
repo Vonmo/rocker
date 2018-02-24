@@ -34,8 +34,9 @@ rustler_export_nifs!(
         ("destroy", 1 , destroy, NifScheduleFlags::DirtyIo), //destroy db and data
         ("repair", 1 , repair, NifScheduleFlags::DirtyIo), //repair db
         ("path", 1, path), //get fs path
-        ("put", 3, put), //put payload
-        ("get", 2, get), //get payload
+        ("put", 3, put), //put key payload
+        ("get", 2, get), //get key payload
+        ("delete", 2, get), //delete key
     ],
     Some(on_load)
 );
@@ -208,7 +209,7 @@ fn get<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
         Ok(Some(v)) => {
             let res = std::str::from_utf8(&v[..]).unwrap();
             Ok((atoms::ok(), res.to_string()).encode(env))
-        },
+        }
         Ok(None) => Ok((atoms::notfound()).encode(env)),
         Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
     }
