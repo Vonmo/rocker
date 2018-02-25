@@ -4,6 +4,7 @@
 -export([lxcode/0,
          open/2,
          open_default/1,
+         open_cf_default/2,
          destroy/1,
          repair/1,
          path/1,
@@ -14,7 +15,9 @@
          iterator/2,
          iterator_valid/1,
          next/1,
-         prefix_iterator/2
+         prefix_iterator/2,
+         create_cf_default/2,
+         create_cf/3
          ]).
 
 %% Native library support
@@ -32,6 +35,9 @@ open(_Path, _Options) ->
     not_loaded(?LINE).
 
 open_default(_Path) ->
+    not_loaded(?LINE).
+
+open_cf_default(_Path, _Cfs) ->
     not_loaded(?LINE).
 
 destroy(_Path) ->
@@ -65,6 +71,12 @@ next(_Iter) ->
     not_loaded(?LINE).
 
 prefix_iterator(_Db, _Prefix) ->
+    not_loaded(?LINE).
+
+create_cf_default(_Db, _Name) ->
+    not_loaded(?LINE).
+
+create_cf(_Db, _Name, _Options) ->
     not_loaded(?LINE).
 
 

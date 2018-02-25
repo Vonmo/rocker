@@ -8,7 +8,8 @@ all() ->
     [
         {group, init},
         {group, atomic},
-        {group, iterator}
+        {group, iterator},
+        {group, cf}
     ].
 
 groups() ->
@@ -16,6 +17,7 @@ groups() ->
         {init,
             [parallel, shuffle],
                 [lxcode, open, open_default, destroy, repair, path]},
+
         {atomic,
             [parallel, shuffle],
                 [put_get, delete, write_batch]},
@@ -24,7 +26,12 @@ groups() ->
             [parallel, shuffle],
                 [create_iterator, next_start, next_end,
                  next_from_forward, next_from_reverse,
-                 prefix_iterator]}
+                 prefix_iterator]},
+
+        {cf,
+            [parallel, shuffle],
+                [create_default, open_cf_default]}
+
     ].
 
 
@@ -255,4 +262,35 @@ prefix_iterator(_)->
     {ok, <<"bbb1">>, <<"vb1">>} = rocker:next(Iter2),
     ok = rocker:next(Iter2),
 
+    ok.
+
+%% =============================================================================
+%% group: cf
+%% =============================================================================
+create_default(_)->
+    Path = <<"/project/priv/db_cf">>,
+    rocker:destroy(Path),
+    {ok, Db} = rocker:open_default(Path),
+    ok = rocker:create_cf_default(Db, <<"testcf">>),
+    ok.
+
+open_cf_default(_)->
+    Path = <<"/project/priv/db_cf_open_default">>,
+    rocker:destroy(Path),
+    Self = self(),
+    spawn(fun()->
+        {ok, Db} = rocker:open_default(Path),
+        ok = rocker:create_cf_default(Db, <<"testcf1">>),
+        ok = rocker:create_cf_default(Db, <<"testcf2">>),
+        ok = rocker:create_cf_default(Db, <<"testcf3">>),
+        Self ! ok
+    end),
+    receive
+        ok ->
+            {err, _} = rocker:open_default(Path),
+            {ok, Db} = rocker:open_cf_default(
+                Path, [<<"testcf1">>,<<"testcf2">>,<<"testcf3">>]
+            ),
+            true = is_reference(Db)
+    end,
     ok.
