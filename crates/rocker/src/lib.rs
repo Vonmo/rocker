@@ -4,7 +4,8 @@ extern crate rocksdb;
 #[macro_use]
 extern crate rustler;
 
-use rocksdb::{DB, DBCompactionStyle, Options, WriteBatch};
+use rocksdb::{DB, DBCompactionStyle, Direction, IteratorMode, Options, WriteBatch};
+use rocksdb::DBIterator;
 use rustler::{NifEncoder, NifEnv, NifResult, NifTerm};
 use rustler::resource::ResourceArc;
 use rustler::schedule::NifScheduleFlags;
@@ -26,6 +27,10 @@ struct DbResource {
     path: String,
 }
 
+struct IteratorResource {
+    iter: RwLock<DBIterator>,
+}
+
 rustler_export_nifs!(
     "rocker",
     [
@@ -38,13 +43,19 @@ rustler_export_nifs!(
         ("put", 3, put), //put key payload
         ("get", 2, get), //get key payload
         ("delete", 2, delete), //delete key
-        ("write_batch", 2, write_batch), //atomic write batch
+        ("tx", 2, tx), //atomic write batch
+        ("iterator", 2, iterator), // get db iterator
+        ("iterator_valid", 1, iterator_valid), // validate iterator
+        ("next", 1, next), // go to next element in iterator
+//        ("key", 1, key), // get iterator current key
+//        ("value", 1, value), // get iterator current value
     ],
     Some(on_load)
 );
 
 fn on_load<'a>(env: NifEnv<'a>, _load_info: NifTerm<'a>) -> bool {
     resource_struct_init!(DbResource, env);
+    resource_struct_init!(IteratorResource, env);
     true
 }
 
@@ -228,7 +239,7 @@ fn delete<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
     }
 }
 
-fn write_batch<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
+fn tx<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
     let resource: ResourceArc<DbResource> = args[0].decode()?;
     let iter: NifListIterator = args[1].decode()?;
     let db = resource.db.write().unwrap();
@@ -253,12 +264,67 @@ fn write_batch<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'
         }
     }
     if batch.len() > 0 {
-        let writed = batch.len();
+        let applied = batch.len();
         match db.write(batch) {
-            Ok(_) => Ok((atoms::ok(), writed).encode(env)),
+            Ok(_) => Ok((atoms::ok(), applied).encode(env)),
             Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
         }
     } else {
         Ok((atoms::ok(), 0).encode(env))
+    }
+}
+
+
+fn iterator<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
+    let resource: ResourceArc<DbResource> = args[0].decode()?;
+    let mode_terms: Vec<NifTerm> = ::rustler::types::tuple::get_tuple(args[1])?;
+    let db = resource.db.read().unwrap();
+    let mut iterator = db.iterator(IteratorMode::Start);
+    if mode_terms.len() >= 1 {
+        let mode: String = mode_terms[0].atom_to_string()?;
+        match mode.as_str() {
+            "end" => iterator = db.iterator(IteratorMode::End),
+            "from" => {
+                let from: String = mode_terms[1].decode()?;
+                let from_bin: Vec<u8> = from.into_bytes();
+                if mode_terms.len() == 3 {
+                    let direction: String = mode_terms[2].atom_to_string()?;
+                    iterator = match direction.as_str() {
+                        "reverse" => db.iterator(IteratorMode::From(&from_bin, Direction::Reverse)),
+                        _ => db.iterator(IteratorMode::From(&from_bin, Direction::Forward)),
+                    }
+                } else {
+                    iterator = db.iterator(IteratorMode::From(&from_bin, Direction::Forward));
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let resource = ResourceArc::new(IteratorResource {
+        iter: RwLock::new(
+            iterator,
+        ),
+    });
+
+    Ok((atoms::ok(), resource.encode(env)).encode(env))
+}
+
+fn iterator_valid<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
+    let resource: ResourceArc<IteratorResource> = args[0].decode()?;
+    let iter = resource.iter.read().unwrap();
+    Ok((atoms::ok(), iter.valid()).encode(env))
+}
+
+fn next<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
+    let resource: ResourceArc<IteratorResource> = args[0].decode()?;
+    let mut iter = resource.iter.write().unwrap();
+    match iter.next() {
+        None => Ok((atoms::ok()).encode(env)),
+        Some((k, v)) => {
+            let key = std::str::from_utf8(&k[..]).unwrap();
+            let value = std::str::from_utf8(&v[..]).unwrap();
+            Ok((atoms::ok(), key.to_string(), value.to_string()).encode(env))
+        },
     }
 }

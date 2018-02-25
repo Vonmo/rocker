@@ -12,4 +12,5 @@ crate-type = ["dylib"]
 erlang_nif-sys = ">=0.6.3"
 lazy_static = "0.2.*"
 rustler = ">=0.13.0"
-rocksdb = "0.9.1"
+#rocksdb = "0.9.1"
+rocksdb = { git = "https://github.com/Elzor/rust-rocksdb.git", branch = "master" }

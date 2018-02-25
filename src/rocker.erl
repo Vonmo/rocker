@@ -10,7 +10,12 @@
          put/3,
          get/2,
          delete/2,
-         write_batch/2
+         tx/2,
+         iterator/2,
+         iterator_valid/1,
+         next/1
+         % key/1,
+         % value/1
          ]).
 
 %% Native library support
@@ -48,8 +53,24 @@ get(_Db, _Key) ->
 delete(_Db, _Key) ->
     not_loaded(?LINE).
 
-write_batch(_Db, _Operations) ->
+tx(_Db, _Operations) ->
     not_loaded(?LINE).
+
+iterator(_Db, _Mode) ->
+    not_loaded(?LINE).
+
+iterator_valid(_Iter) ->
+    not_loaded(?LINE).
+
+next(_Iter) ->
+    not_loaded(?LINE).
+
+% key(_Iter) ->
+%     not_loaded(?LINE).
+
+% value(_Iter) ->
+%     not_loaded(?LINE).
+
 
 %%==============================================================================
 %% helpers

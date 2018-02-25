@@ -1,5 +1,5 @@
 FROM elzor/erlang:latest AS erlang
-FROM rust:1.23 AS rust
+FROM rust:1.24 AS rust
 
 FROM ubuntu:16.04
 
@@ -24,6 +24,7 @@ RUN apt-get update && apt-get install -y \
     telnet \
     build-essential \
     git \
+    vim \
     openssl \
     libssl-dev \
     libncurses5 \

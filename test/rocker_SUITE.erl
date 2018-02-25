@@ -7,7 +7,8 @@
 all() ->
     [
         {group, init},
-        {group, atomic}
+        {group, atomic},
+        {group, iterator}
     ].
 
 groups() ->
@@ -17,7 +18,12 @@ groups() ->
                 [lxcode, open, open_default, destroy, repair, path]},
         {atomic,
             [parallel, shuffle],
-                [put_get, delete, write_batch]}
+                [put_get, delete, write_batch]},
+
+        {iterator,
+            [parallel, shuffle],
+                [create_iterator, next_start, next_end,
+                 next_from_forward, next_from_reverse]}
     ].
 
 
@@ -133,9 +139,98 @@ delete(_)->
 write_batch(_)->
     Path = <<"/project/priv/db_bath">>,
     {ok, Db} = rocker:open_default(Path),
-    ?debugVal(rocker:write_batch(Db, [
+    ok = rocker:put(Db, <<"k0">>, <<"v0">>),
+    {ok, 4} = rocker:tx(Db, [
         {put, <<"k1">>, <<"v1">>},
         {put, <<"k2">>, <<"v2">>},
+        {delete, <<"k0">>, <<"v0">>},
         {put, <<"k3">>, <<"v3">>}
-    ])),
+    ]),
+    notfound = rocker:get(Db, <<"k0">>),
+    {ok, <<"v1">>} = rocker:get(Db, <<"k1">>),
+    {ok, <<"v2">>} = rocker:get(Db, <<"k2">>),
+    {ok, <<"v3">>} = rocker:get(Db, <<"k3">>),
+    ok.
+
+%% =============================================================================
+%% group: iterator
+%% =============================================================================
+create_iterator(_)->
+    Path = <<"/project/priv/db_iter1">>,
+    {ok, Db} = rocker:open_default(Path),
+    ok = rocker:put(Db, <<"k0">>, <<"v0">>),
+    {ok, StartRef} = rocker:iterator(Db, {'start'}),
+    true = is_reference(StartRef),
+    {ok, true} = rocker:iterator_valid(StartRef),
+
+    {ok, EndRef} = rocker:iterator(Db, {'end'}),
+    true = is_reference(EndRef),
+    {ok, true} = rocker:iterator_valid(EndRef),
+
+    {ok, FromRef1} = rocker:iterator(Db, {'from', <<"k0">>, forward}),
+    true = is_reference(FromRef1),
+    {ok, true} = rocker:iterator_valid(FromRef1),
+
+    {ok, FromRef2} = rocker:iterator(Db, {'from', <<"k0">>, reverse}),
+    true = is_reference(FromRef2),
+    {ok, true} = rocker:iterator_valid(FromRef2),
+
+    {ok, FromRef3} = rocker:iterator(Db, {'from', <<"k1">>, forward}),
+    true = is_reference(FromRef3),
+    {ok, false} = rocker:iterator_valid(FromRef3),
+
+    {ok, FromRef4} = rocker:iterator(Db, {'from', <<"k1">>, reverse}),
+    true = is_reference(FromRef4),
+    {ok, false} = rocker:iterator_valid(FromRef4),
+
+    ok.
+
+next_start(_)->
+    Path = <<"/project/priv/db_iter_start">>,
+    {ok, Db} = rocker:open_default(Path),
+    ok = rocker:put(Db, <<"k0">>, <<"v0">>),
+    ok = rocker:put(Db, <<"k1">>, <<"v1">>),
+    ok = rocker:put(Db, <<"k2">>, <<"v2">>),
+    {ok, Iter} = rocker:iterator(Db, {'start'}),
+    {ok, <<"k0">>, <<"v0">>} = rocker:next(Iter),
+    {ok, <<"k1">>, <<"v1">>} = rocker:next(Iter),
+    {ok, <<"k2">>, <<"v2">>} = rocker:next(Iter),
+    ok = rocker:next(Iter),
+    ok.
+
+next_end(_)->
+    Path = <<"/project/priv/db_iter_end">>,
+    {ok, Db} = rocker:open_default(Path),
+    ok = rocker:put(Db, <<"k0">>, <<"v0">>),
+    ok = rocker:put(Db, <<"k1">>, <<"v1">>),
+    ok = rocker:put(Db, <<"k2">>, <<"v2">>),
+    {ok, Iter} = rocker:iterator(Db, {'end'}),
+    {ok, <<"k2">>, <<"v2">>} = rocker:next(Iter),
+    {ok, <<"k1">>, <<"v1">>} = rocker:next(Iter),
+    {ok, <<"k0">>, <<"v0">>} = rocker:next(Iter),
+    ok = rocker:next(Iter),
+    ok.
+
+next_from_forward(_)->
+    Path = <<"/project/priv/db_iter_next_forward">>,
+    {ok, Db} = rocker:open_default(Path),
+    ok = rocker:put(Db, <<"k0">>, <<"v0">>),
+    ok = rocker:put(Db, <<"k1">>, <<"v1">>),
+    ok = rocker:put(Db, <<"k2">>, <<"v2">>),
+    {ok, Iter} = rocker:iterator(Db, {'from', <<"k1">>, forward}),
+    {ok, <<"k1">>, <<"v1">>} = rocker:next(Iter),
+    {ok, <<"k2">>, <<"v2">>} = rocker:next(Iter),
+    ok = rocker:next(Iter),
+    ok.
+
+next_from_reverse(_)->
+    Path = <<"/project/priv/db_iter_next_reverse">>,
+    {ok, Db} = rocker:open_default(Path),
+    ok = rocker:put(Db, <<"k0">>, <<"v0">>),
+    ok = rocker:put(Db, <<"k1">>, <<"v1">>),
+    ok = rocker:put(Db, <<"k2">>, <<"v2">>),
+    {ok, Iter} = rocker:iterator(Db, {'from', <<"k1">>, reverse}),
+    {ok, <<"k1">>, <<"v1">>} = rocker:next(Iter),
+    {ok, <<"k0">>, <<"v0">>} = rocker:next(Iter),
+    ok = rocker:next(Iter),
     ok.
