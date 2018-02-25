@@ -23,7 +23,8 @@ groups() ->
         {iterator,
             [parallel, shuffle],
                 [create_iterator, next_start, next_end,
-                 next_from_forward, next_from_reverse]}
+                 next_from_forward, next_from_reverse,
+                 prefix_iterator]}
     ].
 
 
@@ -233,4 +234,25 @@ next_from_reverse(_)->
     {ok, <<"k1">>, <<"v1">>} = rocker:next(Iter),
     {ok, <<"k0">>, <<"v0">>} = rocker:next(Iter),
     ok = rocker:next(Iter),
+    ok.
+
+prefix_iterator(_)->
+    Path = <<"/project/priv/db_iter_prefix">>,
+    {ok, Db} = rocker:open(Path, #{
+        prefix_length => 3
+    }),
+    ok = rocker:put(Db, <<"aaa1">>, <<"va1">>),
+    ok = rocker:put(Db, <<"bbb1">>, <<"vb1">>),
+    ok = rocker:put(Db, <<"aaa2">>, <<"va2">>),
+    {ok, Iter} = rocker:prefix_iterator(Db, <<"aaa">>),
+    true = is_reference(Iter),
+    {ok, <<"aaa1">>, <<"va1">>} = rocker:next(Iter),
+    {ok, <<"aaa2">>, <<"va2">>} = rocker:next(Iter),
+    ok = rocker:next(Iter),
+
+    {ok, Iter2} = rocker:prefix_iterator(Db, <<"bbb">>),
+    true = is_reference(Iter2),
+    {ok, <<"bbb1">>, <<"vb1">>} = rocker:next(Iter2),
+    ok = rocker:next(Iter2),
+
     ok.

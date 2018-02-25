@@ -45,10 +45,9 @@ rustler_export_nifs!(
         ("delete", 2, delete), //delete key
         ("tx", 2, tx), //atomic write batch
         ("iterator", 2, iterator), // get db iterator
+        ("prefix_iterator", 2, prefix_iterator), // get prefix iterator
         ("iterator_valid", 1, iterator_valid), // validate iterator
         ("next", 1, next), // go to next element in iterator
-//        ("key", 1, key), // get iterator current key
-//        ("value", 1, value), // get iterator current value
     ],
     Some(on_load)
 );
@@ -144,6 +143,11 @@ fn open<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
                 } else if style == "fifo" {
                     opts.set_compaction_style(DBCompactionStyle::Fifo);
                 }
+            }
+            "prefix_length" => {
+                let limit: usize = value.decode()?;
+                let prefix_extractor = rocksdb::SliceTransform::create_fixed_prefix(limit);
+                opts.set_prefix_extractor(prefix_extractor);
             }
             _ => {}
         }
@@ -309,6 +313,25 @@ fn iterator<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>>
 
     Ok((atoms::ok(), resource.encode(env)).encode(env))
 }
+
+
+fn prefix_iterator<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
+    let resource: ResourceArc<DbResource> = args[0].decode()?;
+    let prefix: String = args[1].decode()?;
+    let prefix_bin: Vec<u8> = prefix.into_bytes();
+
+    let db = resource.db.read().unwrap();
+    let iterator = db.prefix_iterator(&prefix_bin);
+
+    let resource = ResourceArc::new(IteratorResource {
+        iter: RwLock::new(
+            iterator,
+        ),
+    });
+
+    Ok((atoms::ok(), resource.encode(env)).encode(env))
+}
+
 
 fn iterator_valid<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
     let resource: ResourceArc<IteratorResource> = args[0].decode()?;

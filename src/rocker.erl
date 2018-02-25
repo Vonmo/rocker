@@ -13,9 +13,8 @@
          tx/2,
          iterator/2,
          iterator_valid/1,
-         next/1
-         % key/1,
-         % value/1
+         next/1,
+         prefix_iterator/2
          ]).
 
 %% Native library support
@@ -65,11 +64,8 @@ iterator_valid(_Iter) ->
 next(_Iter) ->
     not_loaded(?LINE).
 
-% key(_Iter) ->
-%     not_loaded(?LINE).
-
-% value(_Iter) ->
-%     not_loaded(?LINE).
+prefix_iterator(_Db, _Prefix) ->
+    not_loaded(?LINE).
 
 
 %%==============================================================================
