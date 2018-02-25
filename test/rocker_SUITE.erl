@@ -17,7 +17,7 @@ groups() ->
                 [lxcode, open, open_default, destroy, repair, path]},
         {atomic,
             [parallel, shuffle],
-                [put_get]}
+                [put_get, delete, write_batch]}
     ].
 
 
@@ -119,4 +119,23 @@ put_get(_)->
     ok = rocker:put(Db, <<"key">>, <<"value2">>),
     {ok, <<"value2">>} = rocker:get(Db, <<"key">>),
     notfound = rocker:get(Db, <<"unknown">>),
+    ok.
+
+delete(_)->
+    Path = <<"/project/priv/db_delete">>,
+    {ok, Db} = rocker:open_default(Path),
+    ok = rocker:put(Db, <<"key">>, <<"value">>),
+    {ok, <<"value">>} = rocker:get(Db, <<"key">>),
+    ok = rocker:delete(Db, <<"key">>),
+    notfound = rocker:get(Db, <<"key">>),
+    ok.
+
+write_batch(_)->
+    Path = <<"/project/priv/db_bath">>,
+    {ok, Db} = rocker:open_default(Path),
+    ?debugVal(rocker:write_batch(Db, [
+        {put, <<"k1">>, <<"v1">>},
+        {put, <<"k2">>, <<"v2">>},
+        {put, <<"k3">>, <<"v3">>}
+    ])),
     ok.

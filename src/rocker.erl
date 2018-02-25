@@ -8,7 +8,9 @@
          repair/1,
          path/1,
          put/3,
-         get/2
+         get/2,
+         delete/2,
+         write_batch/2
          ]).
 
 %% Native library support
@@ -43,6 +45,11 @@ put(_Db, _Key, _Value) ->
 get(_Db, _Key) ->
     not_loaded(?LINE).
 
+delete(_Db, _Key) ->
+    not_loaded(?LINE).
+
+write_batch(_Db, _Operations) ->
+    not_loaded(?LINE).
 
 %%==============================================================================
 %% helpers

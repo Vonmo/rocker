@@ -4,10 +4,11 @@ extern crate rocksdb;
 #[macro_use]
 extern crate rustler;
 
-use rocksdb::{DB, DBCompactionStyle, Options};
+use rocksdb::{DB, DBCompactionStyle, Options, WriteBatch};
 use rustler::{NifEncoder, NifEnv, NifResult, NifTerm};
 use rustler::resource::ResourceArc;
 use rustler::schedule::NifScheduleFlags;
+use rustler::types::list::NifListIterator;
 use rustler::types::map::NifMapIterator;
 use std::sync::RwLock;
 
@@ -36,7 +37,8 @@ rustler_export_nifs!(
         ("path", 1, path), //get fs path
         ("put", 3, put), //put key payload
         ("get", 2, get), //get key payload
-        ("delete", 2, get), //delete key
+        ("delete", 2, delete), //delete key
+        ("write_batch", 2, write_batch), //atomic write batch
     ],
     Some(on_load)
 );
@@ -57,7 +59,7 @@ fn open<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
 
     let mut opts = Options::default();
     for (key, value) in iter {
-        let param = try!(key.atom_to_string());
+        let param = key.atom_to_string()?;
         match param.as_str() {
             "create_if_missing" => {
                 if try!(value.atom_to_string()).as_str() == "true" {
@@ -204,7 +206,7 @@ fn get<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
     let resource: ResourceArc<DbResource> = args[0].decode()?;
     let key: String = args[1].decode()?;
     let key_bin: Vec<u8> = key.into_bytes();
-    let db = resource.db.write().unwrap();
+    let db = resource.db.read().unwrap();
     match db.get(&key_bin) {
         Ok(Some(v)) => {
             let res = std::str::from_utf8(&v[..]).unwrap();
@@ -212,5 +214,51 @@ fn get<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
         }
         Ok(None) => Ok((atoms::notfound()).encode(env)),
         Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
+    }
+}
+
+fn delete<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
+    let resource: ResourceArc<DbResource> = args[0].decode()?;
+    let key: String = args[1].decode()?;
+    let key_bin: Vec<u8> = key.into_bytes();
+    let db = resource.db.write().unwrap();
+    match db.delete(&key_bin) {
+        Ok(_) => Ok((atoms::ok()).encode(env)),
+        Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
+    }
+}
+
+fn write_batch<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
+    let resource: ResourceArc<DbResource> = args[0].decode()?;
+    let iter: NifListIterator = args[1].decode()?;
+    let db = resource.db.write().unwrap();
+    let mut batch = WriteBatch::default();
+    for elem in iter {
+        let terms: Vec<NifTerm> = ::rustler::types::tuple::get_tuple(elem)?;
+        if terms.len() >= 2 {
+            let op: String = terms[0].atom_to_string()?;
+            let key: String = terms[1].decode()?;
+            let key_bin: Vec<u8> = key.into_bytes();
+            match op.as_str() {
+                "put" => {
+                    let val: String = terms[2].decode()?;
+                    let val_bin: Vec<u8> = val.into_bytes();
+                    let _ = batch.put(&key_bin, &val_bin);
+                }
+                "delete" => {
+                    let _ = batch.delete(&key_bin);
+                }
+                _ => {}
+            }
+        }
+    }
+    if batch.len() > 0 {
+        let writed = batch.len();
+        match db.write(batch) {
+            Ok(_) => Ok((atoms::ok(), writed).encode(env)),
+            Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
+        }
+    } else {
+        Ok((atoms::ok(), 0).encode(env))
     }
 }
