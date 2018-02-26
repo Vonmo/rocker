@@ -1,4 +1,5 @@
 # rocker
-Erlang wrapper for RocksDB
 =====
-work in progress
+Erlang wrapper for RocksDB.
+
+Work in progress...
