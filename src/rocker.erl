@@ -19,7 +19,9 @@
          create_cf_default/2,
          create_cf/3,
          list_cf/1,
-         drop_cf/2
+         drop_cf/2,
+         put_cf/4,
+         get_cf/3
          ]).
 
 %% Native library support
@@ -85,6 +87,12 @@ list_cf(_Path) ->
     not_loaded(?LINE).
 
 drop_cf(_Db, _Name) ->
+    not_loaded(?LINE).
+
+put_cf(_Db, _Cf, _Key, _Value) ->
+    not_loaded(?LINE).
+
+get_cf(_Db, _Cf, _Key) ->
     not_loaded(?LINE).
 
 %%==============================================================================

@@ -53,6 +53,8 @@ rustler_export_nifs!(
         ("create_cf", 3, create_cf), // create cf with options
         ("list_cf", 1, list_cf), // list db cfs
         ("drop_cf", 2, drop_cf, NifScheduleFlags::DirtyIo), // drop cf from db
+        ("put_cf", 4, put_cf), //put key payload into cf
+        ("get_cf", 3, get_cf), //get key payload from cf
     ],
     Some(on_load)
 );
@@ -529,6 +531,39 @@ fn drop_cf<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> 
 
     match db.drop_cf(name.as_str()) {
         Ok(_) => Ok((atoms::ok()).encode(env)),
+        Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
+    }
+}
+
+
+fn put_cf<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
+    let resource: ResourceArc<DbResource> = args[0].decode()?;
+    let cf: String = args[1].decode()?;
+    let key: String = args[2].decode()?;
+    let key_bin: Vec<u8> = key.into_bytes();
+    let value: String = args[3].decode()?;
+    let value_bin: Vec<u8> = value.into_bytes();
+    let db = resource.db.write().unwrap();
+    let cf_handler = db.cf_handle(&cf.as_str()).unwrap();
+    match db.put_cf(cf_handler, &key_bin, &value_bin) {
+        Ok(_) => Ok((atoms::ok()).encode(env)),
+        Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
+    }
+}
+
+fn get_cf<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
+    let resource: ResourceArc<DbResource> = args[0].decode()?;
+    let cf: String = args[1].decode()?;
+    let key: String = args[2].decode()?;
+    let key_bin: Vec<u8> = key.into_bytes();
+    let db = resource.db.read().unwrap();
+    let cf_handler = db.cf_handle(&cf.as_str()).unwrap();
+    match db.get_cf(cf_handler, &key_bin) {
+        Ok(Some(v)) => {
+            let res = std::str::from_utf8(&v[..]).unwrap();
+            Ok((atoms::ok(), res.to_string()).encode(env))
+        }
+        Ok(None) => Ok((atoms::notfound()).encode(env)),
         Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
     }
 }

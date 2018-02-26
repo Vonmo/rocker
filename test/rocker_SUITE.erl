@@ -30,7 +30,8 @@ groups() ->
 
         {cf,
             [parallel, shuffle],
-                [create_default, open_cf_default, list_cf, drop_cf]}
+                [create_default, open_cf_default, list_cf, drop_cf,
+                 put_cf_get_cf, put_cf_get_cf_multi]}
 
     ].
 
@@ -313,4 +314,34 @@ drop_cf(_)->
     ok = rocker:drop_cf(Db, <<"testcf">>),
     {ok,[<<"default">>]} = rocker:list_cf(Path),
     {err, _} = rocker:drop_cf(Db, <<"testcf">>),
+    ok.
+
+put_cf_get_cf(_)->
+    Path = <<"/project/priv/db_put_cf">>,
+    rocker:destroy(Path),
+    Self = self(),
+    spawn(fun()->
+        {ok, Db} = rocker:open_default(Path),
+        ok = rocker:create_cf_default(Db, <<"testcf">>),
+        Self ! ok
+    end),
+    receive
+        ok ->
+            {ok, Db} = rocker:open_cf_default(
+                Path, [<<"testcf">>]
+            ),
+            ok = rocker:put_cf(Db, <<"testcf">>, <<"key">>, <<"value">>),
+            {ok, <<"value">>} = rocker:get_cf(Db, <<"testcf">>, <<"key">>),
+            notfound = rocker:get_cf(Db, <<"testcf">>, <<"unknown">>)
+    end,
+    ok.
+
+put_cf_get_cf_multi(_)->
+    Path = <<"/project/priv/db_put_cf_multi">>,
+    rocker:destroy(Path),
+    {ok, Db} = rocker:open_default(Path),
+    ok = rocker:create_cf_default(Db, <<"testcf">>),
+    ok = rocker:put_cf(Db, <<"testcf">>, <<"key">>, <<"value">>),
+    {ok, <<"value">>} = rocker:get_cf(Db, <<"testcf">>, <<"key">>),
+    notfound = rocker:get_cf(Db, <<"testcf">>, <<"unknown">>),
     ok.
