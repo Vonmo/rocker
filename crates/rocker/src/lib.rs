@@ -80,6 +80,11 @@ fn open<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
                     opts.create_if_missing(true);
                 }
             }
+            "create_missing_column_families" => {
+                if value.atom_to_string()?.as_str() == "true" {
+                    opts.create_missing_column_families(true);
+                }
+            }
             "set_max_open_files" => {
                 let limit: i32 = value.decode()?;
                 opts.set_max_open_files(limit);
@@ -416,6 +421,11 @@ fn create_cf<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>
             "create_if_missing" => {
                 if value.atom_to_string()?.as_str() == "true" {
                     opts.create_if_missing(true);
+                }
+            }
+            "create_missing_column_families" => {
+                if value.atom_to_string()?.as_str() == "true" {
+                    opts.create_missing_column_families(true);
                 }
             }
             "set_max_open_files" => {
