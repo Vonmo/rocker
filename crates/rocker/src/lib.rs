@@ -51,6 +51,7 @@ rustler_export_nifs!(
         ("next", 1, next), // go to next element in iterator
         ("create_cf_default", 2, create_cf_default), // create cf with default options
         ("create_cf", 3, create_cf), // create cf with options
+        ("list_cf", 1, list_cf), // list db cfs
     ],
     Some(on_load)
 );
@@ -262,6 +263,7 @@ fn get<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
     }
 }
 
+
 fn delete<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
     let resource: ResourceArc<DbResource> = args[0].decode()?;
     let key: String = args[1].decode()?;
@@ -272,6 +274,7 @@ fn delete<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
         Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
     }
 }
+
 
 fn tx<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
     let resource: ResourceArc<DbResource> = args[0].decode()?;
@@ -397,6 +400,7 @@ fn create_cf_default<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<Nif
     }
 }
 
+
 fn create_cf<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
     let resource: ResourceArc<DbResource> = args[0].decode()?;
     let name: String = args[1].decode()?;
@@ -492,6 +496,15 @@ fn create_cf<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>
 
     match db.create_cf(name.as_str(), &opts) {
         Ok(_) => Ok((atoms::ok()).encode(env)),
+        Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
+    }
+}
+
+
+fn list_cf<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
+    let path: String = args[0].decode()?;
+    match DB::list_cf(&Options::default(), path) {
+        Ok(cfs) => Ok((atoms::ok(), cfs).encode(env)),
         Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
     }
 }

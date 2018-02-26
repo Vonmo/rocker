@@ -30,7 +30,7 @@ groups() ->
 
         {cf,
             [parallel, shuffle],
-                [create_default, open_cf_default]}
+                [create_default, open_cf_default, list_cf]}
 
     ].
 
@@ -293,4 +293,13 @@ open_cf_default(_)->
             ),
             true = is_reference(Db)
     end,
+    ok.
+
+
+list_cf(_)->
+    Path = <<"/project/priv/db_list_cf">>,
+    rocker:destroy(Path),
+    {ok, Db} = rocker:open_default(Path),
+    ok = rocker:create_cf_default(Db, <<"testcf">>),
+    {ok,[<<"default">>,<<"testcf">>]} = rocker:list_cf(Path),
     ok.

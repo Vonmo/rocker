@@ -17,7 +17,8 @@
          next/1,
          prefix_iterator/2,
          create_cf_default/2,
-         create_cf/3
+         create_cf/3,
+         list_cf/1
          ]).
 
 %% Native library support
@@ -77,6 +78,9 @@ create_cf_default(_Db, _Name) ->
     not_loaded(?LINE).
 
 create_cf(_Db, _Name, _Options) ->
+    not_loaded(?LINE).
+
+list_cf(_Path) ->
     not_loaded(?LINE).
 
 
