@@ -1,9 +1,2 @@
-rocker
-=====
-
-Rocker OTP application
-
-Build
------
-
-    $ rebar3 compile
+# rocker
+Erlang wrapper for RocksDB
