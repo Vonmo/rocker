@@ -18,7 +18,8 @@
          prefix_iterator/2,
          create_cf_default/2,
          create_cf/3,
-         list_cf/1
+         list_cf/1,
+         drop_cf/2
          ]).
 
 %% Native library support
@@ -83,6 +84,8 @@ create_cf(_Db, _Name, _Options) ->
 list_cf(_Path) ->
     not_loaded(?LINE).
 
+drop_cf(_Db, _Name) ->
+    not_loaded(?LINE).
 
 %%==============================================================================
 %% helpers

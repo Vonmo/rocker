@@ -52,6 +52,7 @@ rustler_export_nifs!(
         ("create_cf_default", 2, create_cf_default), // create cf with default options
         ("create_cf", 3, create_cf), // create cf with options
         ("list_cf", 1, list_cf), // list db cfs
+        ("drop_cf", 2, drop_cf, NifScheduleFlags::DirtyIo), // drop cf from db
     ],
     Some(on_load)
 );
@@ -505,6 +506,19 @@ fn list_cf<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> 
     let path: String = args[0].decode()?;
     match DB::list_cf(&Options::default(), path) {
         Ok(cfs) => Ok((atoms::ok(), cfs).encode(env)),
+        Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
+    }
+}
+
+
+fn drop_cf<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
+    let resource: ResourceArc<DbResource> = args[0].decode()?;
+    let name: String = args[1].decode()?;
+
+    let mut db = resource.db.write().unwrap();
+
+    match db.drop_cf(name.as_str()) {
+        Ok(_) => Ok((atoms::ok()).encode(env)),
         Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
     }
 }

@@ -30,7 +30,7 @@ groups() ->
 
         {cf,
             [parallel, shuffle],
-                [create_default, open_cf_default, list_cf]}
+                [create_default, open_cf_default, list_cf, drop_cf]}
 
     ].
 
@@ -302,4 +302,15 @@ list_cf(_)->
     {ok, Db} = rocker:open_default(Path),
     ok = rocker:create_cf_default(Db, <<"testcf">>),
     {ok,[<<"default">>,<<"testcf">>]} = rocker:list_cf(Path),
+    ok.
+
+drop_cf(_)->
+    Path = <<"/project/priv/db_drop_cf">>,
+    rocker:destroy(Path),
+    {ok, Db} = rocker:open_default(Path),
+    ok = rocker:create_cf_default(Db, <<"testcf">>),
+    {ok,[<<"default">>,<<"testcf">>]} = rocker:list_cf(Path),
+    ok = rocker:drop_cf(Db, <<"testcf">>),
+    {ok,[<<"default">>]} = rocker:list_cf(Path),
+    {err, _} = rocker:drop_cf(Db, <<"testcf">>),
     ok.
