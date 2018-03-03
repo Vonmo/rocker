@@ -56,6 +56,7 @@ rustler_export_nifs!(
         ("put_cf", 4, put_cf), //put key payload into cf
         ("get_cf", 3, get_cf), //get key payload from cf
         ("delete_cf", 3, delete_cf), //delete key from cf
+        ("iterator_cf", 3, iterator_cf), //get cf iterator
     ],
     Some(on_load)
 );
@@ -580,4 +581,41 @@ fn delete_cf<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>
         Ok(_) => Ok((atoms::ok()).encode(env)),
         Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
     }
+}
+
+fn iterator_cf<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
+    let resource: ResourceArc<DbResource> = args[0].decode()?;
+    let cf: String = args[1].decode()?;
+    let mode_terms: Vec<NifTerm> = ::rustler::types::tuple::get_tuple(args[2])?;
+    let db = resource.db.read().unwrap();
+    let cf_handler = db.cf_handle(&cf.as_str()).unwrap();
+    let mut iterator = db.iterator_cf(cf_handler,IteratorMode::Start);
+    if mode_terms.len() >= 1 {
+        let mode: String = mode_terms[0].atom_to_string()?;
+        match mode.as_str() {
+            "end" => iterator = db.iterator_cf(cf_handler,IteratorMode::End),
+            "from" => {
+                let from: String = mode_terms[1].decode()?;
+                let from_bin: Vec<u8> = from.into_bytes();
+                if mode_terms.len() == 3 {
+                    let direction: String = mode_terms[2].atom_to_string()?;
+                    iterator = match direction.as_str() {
+                        "reverse" => db.iterator_cf(cf_handler,IteratorMode::From(&from_bin, Direction::Reverse)),
+                        _ => db.iterator_cf(cf_handler,IteratorMode::From(&from_bin, Direction::Forward)),
+                    }
+                } else {
+                    iterator = db.iterator_cf(cf_handler,IteratorMode::From(&from_bin, Direction::Forward));
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let resource = ResourceArc::new(IteratorResource {
+        iter: RwLock::new(
+            iterator.unwrap(),
+        ),
+    });
+
+    Ok((atoms::ok(), resource.encode(env)).encode(env))
 }

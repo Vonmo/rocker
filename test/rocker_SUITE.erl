@@ -31,7 +31,8 @@ groups() ->
         {cf,
             [parallel, shuffle],
                 [create_default, open_cf_default, list_cf, drop_cf,
-                 put_cf_get_cf, put_cf_get_cf_multi, delete_cf]}
+                 put_cf_get_cf, put_cf_get_cf_multi, delete_cf,
+                 create_iterator_cf]}
 
     ].
 
@@ -355,4 +356,38 @@ delete_cf(_)->
     {ok, <<"value">>} = rocker:get_cf(Db, <<"testcf">>, <<"key">>),
     ok = rocker:delete_cf(Db, <<"testcf">>, <<"key">>),
     notfound = rocker:get_cf(Db, <<"testcf">>, <<"key">>),
+    ok.
+
+create_iterator_cf(_)->
+    Path = <<"/project/priv/db_iter_cf1">>,
+    rocker:destroy(Path),
+    {ok, Db} = rocker:open_default(Path),
+    Cf = <<"test_cf">>,
+    ok = rocker:create_cf_default(Db, Cf),
+    ok = rocker:put_cf(Db, Cf, <<"k0">>, <<"v0">>),
+
+    {ok, StartRef} = rocker:iterator_cf(Db, Cf, {'start'}),
+    true = is_reference(StartRef),
+    {ok, true} = rocker:iterator_valid(StartRef),
+
+    {ok, EndRef} = rocker:iterator_cf(Db, Cf, {'end'}),
+    true = is_reference(EndRef),
+    {ok, true} = rocker:iterator_valid(EndRef),
+
+    {ok, FromRef1} = rocker:iterator_cf(Db, Cf, {'from', <<"k0">>, forward}),
+    true = is_reference(FromRef1),
+    {ok, true} = rocker:iterator_valid(FromRef1),
+
+    {ok, FromRef2} = rocker:iterator_cf(Db, Cf, {'from', <<"k0">>, reverse}),
+    true = is_reference(FromRef2),
+    {ok, true} = rocker:iterator_valid(FromRef2),
+
+    {ok, FromRef3} = rocker:iterator_cf(Db, Cf, {'from', <<"k1">>, forward}),
+    true = is_reference(FromRef3),
+    {ok, false} = rocker:iterator_valid(FromRef3),
+
+    {ok, FromRef4} = rocker:iterator_cf(Db, Cf, {'from', <<"k1">>, reverse}),
+    true = is_reference(FromRef4),
+    {ok, false} = rocker:iterator_valid(FromRef4),
+
     ok.
