@@ -23,7 +23,8 @@
          put_cf/4,
          get_cf/3,
          delete_cf/3,
-         iterator_cf/3
+         iterator_cf/3,
+         prefix_iterator_cf/3
          ]).
 
 %% Native library support
@@ -101,6 +102,9 @@ delete_cf(_Db, _Cf, _Key) ->
     not_loaded(?LINE).
 
 iterator_cf(_Db, _Cf, _Mode) ->
+    not_loaded(?LINE).
+
+prefix_iterator_cf(_Db, _Cf, _Prefix) ->
     not_loaded(?LINE).
 
 

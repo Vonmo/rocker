@@ -32,7 +32,9 @@ groups() ->
             [parallel, shuffle],
                 [create_default, open_cf_default, list_cf, drop_cf,
                  put_cf_get_cf, put_cf_get_cf_multi, delete_cf,
-                 create_iterator_cf]}
+                 create_iterator_cf, next_end_cf,
+                 next_from_forward_cf, next_from_reverse_cf,
+                 prefix_iterator_cf]}
 
     ].
 
@@ -389,5 +391,99 @@ create_iterator_cf(_)->
     {ok, FromRef4} = rocker:iterator_cf(Db, Cf, {'from', <<"k1">>, reverse}),
     true = is_reference(FromRef4),
     {ok, false} = rocker:iterator_valid(FromRef4),
+
+    ok.
+
+next_start_cf(_)->
+    Path = <<"/project/priv/db_iter_cf2">>,
+    rocker:destroy(Path),
+    {ok, Db} = rocker:open_default(Path),
+    Cf = <<"test_cf">>,
+    ok = rocker:create_cf_default(Db, Cf),
+    ok = rocker:put_cf(Db, Cf, <<"k0">>, <<"v0">>),
+    ok = rocker:put_cf(Db, Cf, <<"k1">>, <<"v1">>),
+    ok = rocker:put_cf(Db, Cf, <<"k2">>, <<"v2">>),
+
+    {ok, Iter} = rocker:iterator_cf(Db, Cf, {'start'}),
+    {ok, <<"k0">>, <<"v0">>} = rocker:next(Iter),
+    {ok, <<"k1">>, <<"v1">>} = rocker:next(Iter),
+    {ok, <<"k2">>, <<"v2">>} = rocker:next(Iter),
+    ok = rocker:next(Iter),
+    ok.
+
+next_end_cf(_)->
+    Path = <<"/project/priv/db_iter_cf3">>,
+    rocker:destroy(Path),
+    {ok, Db} = rocker:open_default(Path),
+    Cf = <<"test_cf">>,
+    ok = rocker:create_cf_default(Db, Cf),
+
+    ok = rocker:put_cf(Db, Cf, <<"k0">>, <<"v0">>),
+    ok = rocker:put_cf(Db, Cf, <<"k1">>, <<"v1">>),
+    ok = rocker:put_cf(Db, Cf, <<"k2">>, <<"v2">>),
+
+    {ok, Iter} = rocker:iterator_cf(Db, Cf, {'end'}),
+    {ok, <<"k2">>, <<"v2">>} = rocker:next(Iter),
+    {ok, <<"k1">>, <<"v1">>} = rocker:next(Iter),
+    {ok, <<"k0">>, <<"v0">>} = rocker:next(Iter),
+    ok = rocker:next(Iter),
+    ok.
+
+next_from_forward_cf(_)->
+    Path = <<"/project/priv/db_iter_cf4">>,
+    rocker:destroy(Path),
+    {ok, Db} = rocker:open_default(Path),
+    Cf = <<"test_cf">>,
+    ok = rocker:create_cf_default(Db, Cf),
+
+    ok = rocker:put_cf(Db, Cf, <<"k0">>, <<"v0">>),
+    ok = rocker:put_cf(Db, Cf, <<"k1">>, <<"v1">>),
+    ok = rocker:put_cf(Db, Cf, <<"k2">>, <<"v2">>),
+
+    {ok, Iter} = rocker:iterator_cf(Db, Cf, {'from', <<"k1">>, forward}),
+    {ok, <<"k1">>, <<"v1">>} = rocker:next(Iter),
+    {ok, <<"k2">>, <<"v2">>} = rocker:next(Iter),
+    ok = rocker:next(Iter),
+    ok.
+
+next_from_reverse_cf(_)->
+    Path = <<"/project/priv/db_iter_cf5">>,
+    rocker:destroy(Path),
+    {ok, Db} = rocker:open_default(Path),
+    Cf = <<"test_cf">>,
+    ok = rocker:create_cf_default(Db, Cf),
+
+    ok = rocker:put_cf(Db, Cf, <<"k0">>, <<"v0">>),
+    ok = rocker:put_cf(Db, Cf, <<"k1">>, <<"v1">>),
+    ok = rocker:put_cf(Db, Cf, <<"k2">>, <<"v2">>),
+
+    {ok, Iter} = rocker:iterator_cf(Db, Cf, {'from', <<"k1">>, reverse}),
+    {ok, <<"k1">>, <<"v1">>} = rocker:next(Iter),
+    {ok, <<"k0">>, <<"v0">>} = rocker:next(Iter),
+    ok = rocker:next(Iter),
+    ok.
+
+prefix_iterator_cf(_)->
+    Path = <<"/project/priv/db_iter_cf6">>,
+    rocker:destroy(Path),
+    {ok, Db} = rocker:open_default(Path),
+    Cf = <<"test_cf">>,
+    ok = rocker:create_cf(Db, Cf, #{
+        prefix_length => 3
+    }),
+
+    ok = rocker:put_cf(Db, Cf, <<"aaa1">>, <<"va1">>),
+    ok = rocker:put_cf(Db, Cf, <<"bbb1">>, <<"vb1">>),
+    ok = rocker:put_cf(Db, Cf, <<"aaa2">>, <<"va2">>),
+    {ok, Iter} = rocker:prefix_iterator_cf(Db, Cf, <<"aaa">>),
+    true = is_reference(Iter),
+    {ok, <<"aaa1">>, <<"va1">>} = rocker:next(Iter),
+    {ok, <<"aaa2">>, <<"va2">>} = rocker:next(Iter),
+    ok = rocker:next(Iter),
+
+    {ok, Iter2} = rocker:prefix_iterator_cf(Db, Cf, <<"bbb">>),
+    true = is_reference(Iter2),
+    {ok, <<"bbb1">>, <<"vb1">>} = rocker:next(Iter2),
+    ok = rocker:next(Iter2),
 
     ok.

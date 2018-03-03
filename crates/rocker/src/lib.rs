@@ -57,6 +57,7 @@ rustler_export_nifs!(
         ("get_cf", 3, get_cf), //get key payload from cf
         ("delete_cf", 3, delete_cf), //delete key from cf
         ("iterator_cf", 3, iterator_cf), //get cf iterator
+        ("prefix_iterator_cf", 3, prefix_iterator_cf), // get prefix cf iterator
     ],
     Some(on_load)
 );
@@ -166,7 +167,7 @@ fn open<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
         }
     }
 
-    match DB::open(&opts,path.clone()) {
+    match DB::open(&opts, path.clone()) {
         Ok(db) => {
             let resource = ResourceArc::new(DbResource {
                 db: RwLock::new(
@@ -589,27 +590,46 @@ fn iterator_cf<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'
     let mode_terms: Vec<NifTerm> = ::rustler::types::tuple::get_tuple(args[2])?;
     let db = resource.db.read().unwrap();
     let cf_handler = db.cf_handle(&cf.as_str()).unwrap();
-    let mut iterator = db.iterator_cf(cf_handler,IteratorMode::Start);
+    let mut iterator = db.iterator_cf(cf_handler, IteratorMode::Start);
     if mode_terms.len() >= 1 {
         let mode: String = mode_terms[0].atom_to_string()?;
         match mode.as_str() {
-            "end" => iterator = db.iterator_cf(cf_handler,IteratorMode::End),
+            "end" => iterator = db.iterator_cf(cf_handler, IteratorMode::End),
             "from" => {
                 let from: String = mode_terms[1].decode()?;
                 let from_bin: Vec<u8> = from.into_bytes();
                 if mode_terms.len() == 3 {
                     let direction: String = mode_terms[2].atom_to_string()?;
                     iterator = match direction.as_str() {
-                        "reverse" => db.iterator_cf(cf_handler,IteratorMode::From(&from_bin, Direction::Reverse)),
-                        _ => db.iterator_cf(cf_handler,IteratorMode::From(&from_bin, Direction::Forward)),
+                        "reverse" => db.iterator_cf(cf_handler, IteratorMode::From(&from_bin, Direction::Reverse)),
+                        _ => db.iterator_cf(cf_handler, IteratorMode::From(&from_bin, Direction::Forward)),
                     }
                 } else {
-                    iterator = db.iterator_cf(cf_handler,IteratorMode::From(&from_bin, Direction::Forward));
+                    iterator = db.iterator_cf(cf_handler, IteratorMode::From(&from_bin, Direction::Forward));
                 }
             }
             _ => {}
         }
     }
+
+    let resource = ResourceArc::new(IteratorResource {
+        iter: RwLock::new(
+            iterator.unwrap(),
+        ),
+    });
+
+    Ok((atoms::ok(), resource.encode(env)).encode(env))
+}
+
+fn prefix_iterator_cf<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
+    let resource: ResourceArc<DbResource> = args[0].decode()?;
+    let cf: String = args[1].decode()?;
+    let prefix: String = args[2].decode()?;
+    let prefix_bin: Vec<u8> = prefix.into_bytes();
+
+    let db = resource.db.read().unwrap();
+    let cf_handler = db.cf_handle(&cf.as_str()).unwrap();
+    let iterator = db.prefix_iterator_cf(cf_handler, &prefix_bin);
 
     let resource = ResourceArc::new(IteratorResource {
         iter: RwLock::new(
