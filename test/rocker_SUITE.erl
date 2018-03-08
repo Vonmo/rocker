@@ -9,7 +9,8 @@ all() ->
         {group, init},
         {group, atomic},
         {group, iterator},
-        {group, cf}
+        {group, cf},
+        {group, perf}
     ].
 
 groups() ->
@@ -34,7 +35,11 @@ groups() ->
                  put_cf_get_cf, put_cf_get_cf_multi, delete_cf,
                  create_iterator_cf, next_end_cf,
                  next_from_forward_cf, next_from_reverse_cf,
-                 prefix_iterator_cf, write_batch_cf]}
+                 prefix_iterator_cf, write_batch_cf]},
+
+        {perf,
+            [shuffle],
+                [perf_default]}
 
     ].
 
@@ -532,4 +537,24 @@ write_batch_cf(_)->
     {ok, <<"v2">>} = rocker:get_cf(Db, Cf2, <<"k2">>),
     {ok, <<"v3">>} = rocker:get_cf(Db, Cf2, <<"k3">>),
 
+    ok.
+
+%% =============================================================================
+%% group: perf
+%% =============================================================================
+perf_default(_)->
+    Path = <<"/project/priv/perf_default">>,
+    rocker:destroy(Path),
+    {ok, Db} = rocker:open_default(Path),
+    W = perftest:comprehensive(1000, fun()->
+        I = list_to_binary(uuid:uuid_to_string(uuid:get_v4())),
+        ok = rocker:put(Db, I, I)
+    end),
+    true = lists:all(fun(E)-> E >=5000 end, W),
+
+    ok = rocker:put(Db, <<"k0">>, <<"v0">>),
+    R = perftest:comprehensive(1000, fun()->
+        {ok, <<"v0">>} = rocker:get(Db, <<"k0">>)
+    end),
+    true = lists:all(fun(E)-> E >=5000 end, R),
     ok.
