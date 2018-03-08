@@ -3,10 +3,18 @@ rocker
 
 Erlang wrapper for [RocksDB](https://github.com/facebook/rocksdb).
 
+## Features
+* all basics db operations
+* column families support
+* transactions
+
 ## Build Information
 * "rocker" uses the [rebar3](https://www.rebar3.org) build system. Makefile so that simply running "make" at the top level should work.
 * "rocker" requires Erlang 20.1 or later.
 * "rocker" requires Rust 1.23 or later.
+
+## API
+
 
 ## Status
 Passed all the functional and performance tests.
