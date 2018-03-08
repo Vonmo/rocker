@@ -296,16 +296,34 @@ fn tx<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
         let terms: Vec<NifTerm> = ::rustler::types::tuple::get_tuple(elem)?;
         if terms.len() >= 2 {
             let op: String = terms[0].atom_to_string()?;
-            let key: String = terms[1].decode()?;
-            let key_bin: Vec<u8> = key.into_bytes();
             match op.as_str() {
                 "put" => {
+                    let key: String = terms[1].decode()?;
+                    let key_bin: Vec<u8> = key.into_bytes();
                     let val: String = terms[2].decode()?;
                     let val_bin: Vec<u8> = val.into_bytes();
                     let _ = batch.put(&key_bin, &val_bin);
                 }
+                "put_cf" => {
+                    let cf: String = terms[1].decode()?;
+                    let key: String = terms[2].decode()?;
+                    let key_bin: Vec<u8> = key.into_bytes();
+                    let value: String = terms[3].decode()?;
+                    let value_bin: Vec<u8> = value.into_bytes();
+                    let cf_handler = db.cf_handle(&cf.as_str()).unwrap();
+                    let _ = batch.put_cf(cf_handler, &key_bin, &value_bin);
+                }
                 "delete" => {
+                    let key: String = terms[1].decode()?;
+                    let key_bin: Vec<u8> = key.into_bytes();
                     let _ = batch.delete(&key_bin);
+                }
+                "delete_cf" => {
+                    let cf: String = terms[1].decode()?;
+                    let key: String = terms[2].decode()?;
+                    let key_bin: Vec<u8> = key.into_bytes();
+                    let cf_handler = db.cf_handle(&cf.as_str()).unwrap();
+                    let _ = batch.delete_cf(cf_handler, &key_bin);
                 }
                 _ => {}
             }

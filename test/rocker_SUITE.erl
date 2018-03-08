@@ -34,7 +34,7 @@ groups() ->
                  put_cf_get_cf, put_cf_get_cf_multi, delete_cf,
                  create_iterator_cf, next_end_cf,
                  next_from_forward_cf, next_from_reverse_cf,
-                 prefix_iterator_cf]}
+                 prefix_iterator_cf, write_batch_cf]}
 
     ].
 
@@ -485,5 +485,51 @@ prefix_iterator_cf(_)->
     true = is_reference(Iter2),
     {ok, <<"bbb1">>, <<"vb1">>} = rocker:next(Iter2),
     ok = rocker:next(Iter2),
+
+    ok.
+
+write_batch_cf(_)->
+    Path = <<"/project/priv/db_bath_cf">>,
+    rocker:destroy(Path),
+    {ok, Db} = rocker:open_default(Path),
+    Cf1 = <<"test_cf1">>,
+    ok = rocker:create_cf_default(Db, Cf1),
+    Cf2 = <<"test_cf2">>,
+    ok = rocker:create_cf_default(Db, Cf2),
+
+    ok = rocker:put(Db, <<"k0">>, <<"v0">>),
+    ok = rocker:put_cf(Db, Cf1, <<"k0">>, <<"v0">>),
+    ok = rocker:put_cf(Db, Cf2, <<"k0">>, <<"v0">>),
+    {ok, 12} = rocker:tx(Db, [
+        {put, <<"k1">>, <<"v1">>},
+        {put, <<"k2">>, <<"v2">>},
+        {delete, <<"k0">>, <<"v0">>},
+        {put, <<"k3">>, <<"v3">>},
+
+        {put_cf, Cf1, <<"k1">>, <<"v1">>},
+        {put_cf, Cf1, <<"k2">>, <<"v2">>},
+        {delete_cf, Cf1, <<"k0">>, <<"v0">>},
+        {put_cf, Cf1, <<"k3">>, <<"v3">>},
+
+        {put_cf, Cf2, <<"k1">>, <<"v1">>},
+        {put_cf, Cf2, <<"k2">>, <<"v2">>},
+        {delete_cf, Cf2, <<"k0">>, <<"v0">>},
+        {put_cf, Cf2, <<"k3">>, <<"v3">>}
+    ]),
+
+    notfound = rocker:get(Db, <<"k0">>),
+    {ok, <<"v1">>} = rocker:get(Db, <<"k1">>),
+    {ok, <<"v2">>} = rocker:get(Db, <<"k2">>),
+    {ok, <<"v3">>} = rocker:get(Db, <<"k3">>),
+
+    notfound = rocker:get_cf(Db, Cf1, <<"k0">>),
+    {ok, <<"v1">>} = rocker:get_cf(Db, Cf1, <<"k1">>),
+    {ok, <<"v2">>} = rocker:get_cf(Db, Cf1, <<"k2">>),
+    {ok, <<"v3">>} = rocker:get_cf(Db, Cf1, <<"k3">>),
+
+    notfound = rocker:get_cf(Db, Cf2, <<"k0">>),
+    {ok, <<"v1">>} = rocker:get_cf(Db, Cf2, <<"k1">>),
+    {ok, <<"v2">>} = rocker:get_cf(Db, Cf2, <<"k2">>),
+    {ok, <<"v3">>} = rocker:get_cf(Db, Cf2, <<"k3">>),
 
     ok.
