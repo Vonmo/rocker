@@ -1,13 +1,10 @@
-FROM elzor/erlang:latest AS erlang
+FROM elzor/erlang:20.3 AS erlang
 FROM rust:1.24 AS rust
 
-FROM ubuntu:16.04
+FROM debian:9.4
 
-ENV OS_FAMILY ubuntu
-ENV OS_VERSION 16.04
-
-COPY --from=erlang /erl20.1 /erl20.1
-ENV PATH=/erl20.1/bin:$PATH
+COPY --from=erlang /erl /erl
+ENV PATH=/erl/bin:$PATH
 
 COPY --from=rust /usr/local/rustup /usr/local/rustup
 COPY --from=rust /usr/local/cargo /usr/local/cargo
@@ -16,15 +13,12 @@ ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install --no-install-recommends -y \
     apt-transport-https \
     wget \
     curl \
-    lsof \
-    telnet \
     build-essential \
     git \
-    vim \
     openssl \
     libssl-dev \
     libncurses5 \
@@ -32,8 +26,10 @@ RUN apt-get update && apt-get install -y \
     xsltproc \
     automake \
     autoconf \
-    clang-5.0 \
-    libclang-dev
+    clang \
+    libclang-dev \
+    procps \
+    ca-certificates
 
 ADD ./docker-entry.sh /docker-entry.sh
 
