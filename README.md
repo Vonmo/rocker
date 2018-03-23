@@ -6,7 +6,7 @@ Erlang wrapper for [RocksDB](https://github.com/facebook/rocksdb).
 ## Features
 * all basics db operations
 * column families support
-* transactions
+* transactions support
 
 ## Build Information
 * "rocker" uses the [rebar3](https://www.rebar3.org) build system. Makefile so that simply running "make" at the top level should work.
