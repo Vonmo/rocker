@@ -21,7 +21,7 @@ groups() ->
 
         {atomic,
             [parallel, shuffle],
-                [put_get, delete, write_batch]},
+                [put_get, put_get_bin, delete, write_batch]},
 
         {iterator,
             [parallel, shuffle],
@@ -144,6 +144,16 @@ put_get(_)->
     notfound = rocker:get(Db, <<"unknown">>),
     ok.
 
+put_get_bin(_)->
+    Path = <<"/project/priv/db_put_bin">>,
+    Key = term_to_binary({test, key}),
+    Val = term_to_binary({test, val}),
+    {ok, Db} = rocker:open_default(Path),
+    ok = rocker:put(Db, Key, Val),
+    {ok, Val} = rocker:get(Db, Key),
+    ok.
+
+
 delete(_)->
     Path = <<"/project/priv/db_delete">>,
     {ok, Db} = rocker:open_default(Path),
@@ -160,7 +170,7 @@ write_batch(_)->
     {ok, 4} = rocker:tx(Db, [
         {put, <<"k1">>, <<"v1">>},
         {put, <<"k2">>, <<"v2">>},
-        {delete, <<"k0">>, <<"v0">>},
+        {delete, <<"k0">>},
         {put, <<"k3">>, <<"v3">>}
     ]),
     notfound = rocker:get(Db, <<"k0">>),

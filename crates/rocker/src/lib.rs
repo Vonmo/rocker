@@ -9,6 +9,7 @@ use rocksdb::DBIterator;
 use rustler::{NifEncoder, NifEnv, NifResult, NifTerm};
 use rustler::resource::ResourceArc;
 use rustler::schedule::NifScheduleFlags;
+use rustler::types::binary::{NifBinary, OwnedNifBinary};
 use rustler::types::list::NifListIterator;
 use rustler::types::map::NifMapIterator;
 use std::sync::RwLock;
@@ -247,12 +248,10 @@ fn path<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
 
 fn put<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
     let resource: ResourceArc<DbResource> = args[0].decode()?;
-    let key: String = args[1].decode()?;
-    let value: String = args[2].decode()?;
-    let key_bin: Vec<u8> = key.into_bytes();
-    let value_bin: Vec<u8> = value.into_bytes();
+    let key: NifBinary = args[1].decode()?;
+    let value: NifBinary = args[2].decode()?;
     let db = resource.db.write().unwrap();
-    match db.put(&key_bin, &value_bin) {
+    match db.put(&key, &value) {
         Ok(_) => Ok((atoms::ok()).encode(env)),
         Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
     }
@@ -261,13 +260,13 @@ fn put<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
 
 fn get<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
     let resource: ResourceArc<DbResource> = args[0].decode()?;
-    let key: String = args[1].decode()?;
-    let key_bin: Vec<u8> = key.into_bytes();
+    let key: NifBinary = args[1].decode()?;
     let db = resource.db.read().unwrap();
-    match db.get(&key_bin) {
+    match db.get(&key) {
         Ok(Some(v)) => {
-            let res = std::str::from_utf8(&v[..]).unwrap();
-            Ok((atoms::ok(), res.to_string()).encode(env))
+            let mut value = OwnedNifBinary::new(v[..].len()).unwrap();
+            value.clone_from_slice(&v[..]);
+            Ok((atoms::ok(), value.release(env) ).encode(env))
         }
         Ok(None) => Ok((atoms::notfound()).encode(env)),
         Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
@@ -277,10 +276,9 @@ fn get<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
 
 fn delete<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
     let resource: ResourceArc<DbResource> = args[0].decode()?;
-    let key: String = args[1].decode()?;
-    let key_bin: Vec<u8> = key.into_bytes();
+    let key: NifBinary = args[1].decode()?;
     let db = resource.db.write().unwrap();
-    match db.delete(&key_bin) {
+    match db.delete(&key) {
         Ok(_) => Ok((atoms::ok()).encode(env)),
         Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
     }
@@ -298,32 +296,26 @@ fn tx<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
             let op: String = terms[0].atom_to_string()?;
             match op.as_str() {
                 "put" => {
-                    let key: String = terms[1].decode()?;
-                    let key_bin: Vec<u8> = key.into_bytes();
-                    let val: String = terms[2].decode()?;
-                    let val_bin: Vec<u8> = val.into_bytes();
-                    let _ = batch.put(&key_bin, &val_bin);
+                    let key: NifBinary = terms[1].decode()?;
+                    let val: NifBinary = terms[2].decode()?;
+                    let _ = batch.put(&key, &val);
                 }
                 "put_cf" => {
                     let cf: String = terms[1].decode()?;
-                    let key: String = terms[2].decode()?;
-                    let key_bin: Vec<u8> = key.into_bytes();
-                    let value: String = terms[3].decode()?;
-                    let value_bin: Vec<u8> = value.into_bytes();
+                    let key: NifBinary = terms[2].decode()?;
+                    let value: NifBinary = terms[3].decode()?;
                     let cf_handler = db.cf_handle(&cf.as_str()).unwrap();
-                    let _ = batch.put_cf(cf_handler, &key_bin, &value_bin);
+                    let _ = batch.put_cf(cf_handler, &key, &value);
                 }
                 "delete" => {
-                    let key: String = terms[1].decode()?;
-                    let key_bin: Vec<u8> = key.into_bytes();
-                    let _ = batch.delete(&key_bin);
+                    let key: NifBinary = terms[1].decode()?;
+                    let _ = batch.delete(&key);
                 }
                 "delete_cf" => {
                     let cf: String = terms[1].decode()?;
-                    let key: String = terms[2].decode()?;
-                    let key_bin: Vec<u8> = key.into_bytes();
+                    let key: NifBinary = terms[2].decode()?;
                     let cf_handler = db.cf_handle(&cf.as_str()).unwrap();
-                    let _ = batch.delete_cf(cf_handler, &key_bin);
+                    let _ = batch.delete_cf(cf_handler, &key);
                 }
                 _ => {}
             }
@@ -351,16 +343,15 @@ fn iterator<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>>
         match mode.as_str() {
             "end" => iterator = db.iterator(IteratorMode::End),
             "from" => {
-                let from: String = mode_terms[1].decode()?;
-                let from_bin: Vec<u8> = from.into_bytes();
+                let from: NifBinary = mode_terms[1].decode()?;
                 if mode_terms.len() == 3 {
                     let direction: String = mode_terms[2].atom_to_string()?;
                     iterator = match direction.as_str() {
-                        "reverse" => db.iterator(IteratorMode::From(&from_bin, Direction::Reverse)),
-                        _ => db.iterator(IteratorMode::From(&from_bin, Direction::Forward)),
+                        "reverse" => db.iterator(IteratorMode::From(&from, Direction::Reverse)),
+                        _ => db.iterator(IteratorMode::From(&from, Direction::Forward)),
                     }
                 } else {
-                    iterator = db.iterator(IteratorMode::From(&from_bin, Direction::Forward));
+                    iterator = db.iterator(IteratorMode::From(&from, Direction::Forward));
                 }
             }
             _ => {}
@@ -379,11 +370,10 @@ fn iterator<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>>
 
 fn prefix_iterator<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
     let resource: ResourceArc<DbResource> = args[0].decode()?;
-    let prefix: String = args[1].decode()?;
-    let prefix_bin: Vec<u8> = prefix.into_bytes();
+    let prefix: NifBinary = args[1].decode()?;
 
     let db = resource.db.read().unwrap();
-    let iterator = db.prefix_iterator(&prefix_bin);
+    let iterator = db.prefix_iterator(&prefix);
 
     let resource = ResourceArc::new(IteratorResource {
         iter: RwLock::new(
@@ -408,9 +398,13 @@ fn next<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
     match iter.next() {
         None => Ok((atoms::ok()).encode(env)),
         Some((k, v)) => {
-            let key = std::str::from_utf8(&k[..]).unwrap();
-            let value = std::str::from_utf8(&v[..]).unwrap();
-            Ok((atoms::ok(), key.to_string(), value.to_string()).encode(env))
+            let mut key = OwnedNifBinary::new(k[..].len()).unwrap();
+            key.clone_from_slice(&k[..]);
+
+            let mut value = OwnedNifBinary::new(v[..].len()).unwrap();
+            value.clone_from_slice(&v[..]);
+
+            Ok((atoms::ok(), key.release(env), value.release(env) ).encode(env))
         }
     }
 }
@@ -560,13 +554,11 @@ fn drop_cf<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> 
 fn put_cf<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
     let resource: ResourceArc<DbResource> = args[0].decode()?;
     let cf: String = args[1].decode()?;
-    let key: String = args[2].decode()?;
-    let key_bin: Vec<u8> = key.into_bytes();
-    let value: String = args[3].decode()?;
-    let value_bin: Vec<u8> = value.into_bytes();
+    let key: NifBinary = args[2].decode()?;
+    let value: NifBinary = args[3].decode()?;
     let db = resource.db.write().unwrap();
     let cf_handler = db.cf_handle(&cf.as_str()).unwrap();
-    match db.put_cf(cf_handler, &key_bin, &value_bin) {
+    match db.put_cf(cf_handler, &key, &value) {
         Ok(_) => Ok((atoms::ok()).encode(env)),
         Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
     }
@@ -575,14 +567,14 @@ fn put_cf<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
 fn get_cf<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
     let resource: ResourceArc<DbResource> = args[0].decode()?;
     let cf: String = args[1].decode()?;
-    let key: String = args[2].decode()?;
-    let key_bin: Vec<u8> = key.into_bytes();
+    let key: NifBinary = args[2].decode()?;
     let db = resource.db.read().unwrap();
     let cf_handler = db.cf_handle(&cf.as_str()).unwrap();
-    match db.get_cf(cf_handler, &key_bin) {
+    match db.get_cf(cf_handler, &key) {
         Ok(Some(v)) => {
-            let res = std::str::from_utf8(&v[..]).unwrap();
-            Ok((atoms::ok(), res.to_string()).encode(env))
+            let mut value = OwnedNifBinary::new(v[..].len()).unwrap();
+            value.clone_from_slice(&v[..]);
+            Ok((atoms::ok(), value.release(env)).encode(env))
         }
         Ok(None) => Ok((atoms::notfound()).encode(env)),
         Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
@@ -592,11 +584,10 @@ fn get_cf<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
 fn delete_cf<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
     let resource: ResourceArc<DbResource> = args[0].decode()?;
     let cf: String = args[1].decode()?;
-    let key: String = args[2].decode()?;
-    let key_bin: Vec<u8> = key.into_bytes();
+    let key: NifBinary = args[2].decode()?;
     let db = resource.db.read().unwrap();
     let cf_handler = db.cf_handle(&cf.as_str()).unwrap();
-    match db.delete_cf(cf_handler, &key_bin) {
+    match db.delete_cf(cf_handler, &key) {
         Ok(_) => Ok((atoms::ok()).encode(env)),
         Err(e) => Ok((atoms::err(), e.to_string()).encode(env)),
     }
@@ -614,16 +605,15 @@ fn iterator_cf<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'
         match mode.as_str() {
             "end" => iterator = db.iterator_cf(cf_handler, IteratorMode::End),
             "from" => {
-                let from: String = mode_terms[1].decode()?;
-                let from_bin: Vec<u8> = from.into_bytes();
+                let from: NifBinary = mode_terms[1].decode()?;
                 if mode_terms.len() == 3 {
                     let direction: String = mode_terms[2].atom_to_string()?;
                     iterator = match direction.as_str() {
-                        "reverse" => db.iterator_cf(cf_handler, IteratorMode::From(&from_bin, Direction::Reverse)),
-                        _ => db.iterator_cf(cf_handler, IteratorMode::From(&from_bin, Direction::Forward)),
+                        "reverse" => db.iterator_cf(cf_handler, IteratorMode::From(&from, Direction::Reverse)),
+                        _ => db.iterator_cf(cf_handler, IteratorMode::From(&from, Direction::Forward)),
                     }
                 } else {
-                    iterator = db.iterator_cf(cf_handler, IteratorMode::From(&from_bin, Direction::Forward));
+                    iterator = db.iterator_cf(cf_handler, IteratorMode::From(&from, Direction::Forward));
                 }
             }
             _ => {}
@@ -642,12 +632,11 @@ fn iterator_cf<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'
 fn prefix_iterator_cf<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
     let resource: ResourceArc<DbResource> = args[0].decode()?;
     let cf: String = args[1].decode()?;
-    let prefix: String = args[2].decode()?;
-    let prefix_bin: Vec<u8> = prefix.into_bytes();
+    let prefix: NifBinary = args[2].decode()?;
 
     let db = resource.db.read().unwrap();
     let cf_handler = db.cf_handle(&cf.as_str()).unwrap();
-    let iterator = db.prefix_iterator_cf(cf_handler, &prefix_bin);
+    let iterator = db.prefix_iterator_cf(cf_handler, &prefix);
 
     let resource = ResourceArc::new(IteratorResource {
         iter: RwLock::new(
