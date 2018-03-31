@@ -17,7 +17,7 @@ groups() ->
     [
         {init,
             [parallel, shuffle],
-                [lxcode, open, open_default, destroy, repair, path]},
+                [lxcode, open, open_default, destroy, repair, path, open_multi_ptr]},
 
         {atomic,
             [parallel, shuffle],
@@ -93,6 +93,15 @@ open(_)->
 open_default(_)->
     {ok, Db} = rocker:open_default(<<"/project/priv/db_default_path">>),
     true = is_reference(Db),
+    ok.
+
+open_multi_ptr(_)->
+    {ok, Db1} = rocker:open_default(<<"/project/priv/db_default_path1">>),
+    true = is_reference(Db1),
+    {ok, Db2} = rocker:open_default(<<"/project/priv/db_default_path2">>),
+    true = is_reference(Db2),
+    {ok, Db3} = rocker:open_default(<<"/project/priv/db_default_path3">>),
+    true = is_reference(Db3),
     ok.
 
 destroy(_)->
