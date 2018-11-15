@@ -274,7 +274,8 @@ next_from_reverse(_) ->
 prefix_iterator(_) ->
   Path = <<"/project/priv/db_iter_prefix">>,
   {ok, Db} = rocker:open(Path, #{
-    prefix_length => 3
+    prefix_length => 3,
+    create_if_missing => true
   }),
   ok = rocker:put(Db, <<"aaa1">>, <<"va1">>),
   ok = rocker:put(Db, <<"bbb1">>, <<"vb1">>),
