@@ -21,7 +21,7 @@ Passed all the functional and performance tests.
 
 ## Versioning
 The release version follows the RocksDB's one.
-For instance, if the version of rocker is 5.14.2 then the version of RocksDB rocker binds is also 5.10.2.
+For instance, if the version of rocker is 5.14.2 then the version of RocksDB rocker binds is also 5.14.2.
 
 ## License
 rocker's license is [Apache License Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.html)
