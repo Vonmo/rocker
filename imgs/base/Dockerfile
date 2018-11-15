@@ -1,5 +1,5 @@
 FROM elzor/erlang:20.3 AS erlang
-FROM rust:1.24 AS rust
+FROM rust:1.30 AS rust
 
 FROM debian:9.4
 
