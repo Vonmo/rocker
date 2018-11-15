@@ -217,7 +217,8 @@ create_iterator(_) ->
 
   {ok, FromRef4} = rocker:iterator(Db, {'from', <<"k1">>, reverse}),
   true = is_reference(FromRef4),
-  {ok, false} = rocker:iterator_valid(FromRef4),
+  {ok, true} = rocker:iterator_valid(FromRef4),
+  {ok, <<"k0">>, _} = rocker:next(FromRef4),
 
   ok.
 
@@ -415,7 +416,8 @@ create_iterator_cf(_) ->
 
   {ok, FromRef4} = rocker:iterator_cf(Db, Cf, {'from', <<"k1">>, reverse}),
   true = is_reference(FromRef4),
-  {ok, false} = rocker:iterator_valid(FromRef4),
+  {ok, true} = rocker:iterator_valid(FromRef4),
+  {ok, <<"k0">>, _} = rocker:next(FromRef4),
 
   ok.
 
