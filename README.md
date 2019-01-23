@@ -9,6 +9,22 @@ Rocker is NIF for Erlang which uses Rust binding for [RocksDB](https://github.co
 * "rocker" requires Rust >= 1.23.
 * "rocker" requires Clang >= 3.8.
 
+## Rebar3 deps
+```
+{deps, [
+   {rocker, "", {git, "git://github.com/Vonmo/rocker.git", {tag, "v5.14.2_2"}}},
+]}.
+```
+
+## mix deps (Elixir)
+```
+defp deps do
+ [
+   {:rocker, git: "https://github.com/Vonmo/rocker.git", tag: "v5.14.2_2"}      
+ ]
+end
+```
+
 ## Features
 * all basics db operations
 * column families support
