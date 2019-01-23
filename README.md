@@ -7,6 +7,7 @@ Rocker is NIF for Erlang which uses Rust binding for [RocksDB](https://github.co
 * "rocker" uses the [rebar3](https://www.rebar3.org) build system. Makefile so that simply running "make" at the top level should work.
 * "rocker" requires Erlang >= 20.1.
 * "rocker" requires Rust >= 1.23.
+* "rocker" requires Clang >= 3.8.
 
 ## Features
 * all basics db operations
