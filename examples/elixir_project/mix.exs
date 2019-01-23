@@ -21,7 +21,7 @@ defmodule ElixirProject.MixProject do
 
   defp deps do
     [
-      {:rocker, git: "https://github.com/Vonmo/rocker.git", tag: "v5.14.2_2"}      
+      {:rocker, git: "https://github.com/Vonmo/rocker.git", tag: "v5.14.2_3"}      
     ]
   end
 end
