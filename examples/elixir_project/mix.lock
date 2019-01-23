@@ -1,0 +1,3 @@
+%{
+  "rocker": {:git, "https://github.com/Vonmo/rocker.git", "5c3f4386096c410ec00ef33252e94edc6cbba977", [tag: "v5.14.2_2"]},
+}
