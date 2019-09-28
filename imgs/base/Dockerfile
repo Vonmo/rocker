@@ -1,10 +1,18 @@
-FROM elzor/erlang:20.3 AS erlang
-FROM rust:1.30 AS rust
+FROM erlang:21.0 AS erlang
+FROM rust:1.38.0 AS rust
 
 FROM debian:9.4
 
-COPY --from=erlang /erl /erl
-ENV PATH=/erl/bin:$PATH
+LABEL author="Maxim Molchanov"
+LABEL maintainer="m.molchanov@vonmo.com"
+LABEL version="1.0"
+LABEL description="Base docker image for Rocker"
+
+ENV TZ=UTC
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+COPY --from=erlang /usr/local/lib/erlang /usr/local/lib/erlang
+ENV PATH=/usr/local/lib/erlang/bin:$PATH
 
 COPY --from=rust /usr/local/rustup /usr/local/rustup
 COPY --from=rust /usr/local/cargo /usr/local/cargo
@@ -29,7 +37,21 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     clang \
     libclang-dev \
     procps \
-    ca-certificates
+    ca-certificates \
+    python-dev \
+    python-pip \
+    python-setuptools \
+    make \
+    cmake \
+    locales \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists /var/cache/apt \
+    && find /usr/local -name examples | xargs rm -rf
+
+RUN echo "LC_ALL=en_US.UTF-8" >> /etc/environment
+RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
+RUN echo "LANG=en_US.UTF-8" > /etc/locale.conf
+RUN locale-gen en_US.UTF-8
 
 ADD ./docker-entry.sh /docker-entry.sh
 
