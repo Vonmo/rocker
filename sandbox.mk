@@ -26,10 +26,10 @@ all: $(REBAR) compile
 compile: $(REBAR)
 	$(REBAR) compile
 
-tests: $(REBAR)
+tests: start_epmd $(REBAR)
 	$(REBAR) as test ct --spec ./test/spec.spec
 
-tests_cover:
+tests_cover: start_epmd
 	$(REBAR) as test ct --spec ./test/spec.spec --cover
 
 cover:
@@ -72,3 +72,6 @@ $(REBAR):
 
 upgrade_rebar:
 	$(REBAR) local upgrade
+
+start_epmd:
+	@/bin/sh -c 'if ! pgrep -x epmd > /dev/null ; then epmd -daemon; fi'
