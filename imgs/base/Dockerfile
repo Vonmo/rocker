@@ -1,11 +1,10 @@
-FROM erlang:21.0 AS erlang
-FROM rust:1.38.0 AS rust
-
-FROM debian:9.4
+FROM erlang:22.2 AS erlang
+FROM rust:1.40.0 AS rust
+FROM debian:10.2
 
 LABEL author="Maxim Molchanov"
 LABEL maintainer="m.molchanov@vonmo.com"
-LABEL version="1.0"
+LABEL version="2.0"
 LABEL description="Base docker image for Rocker"
 
 ENV TZ=UTC
@@ -23,6 +22,7 @@ ENV RUSTUP_HOME=/usr/local/rustup \
 
 RUN apt-get update && apt-get install --no-install-recommends -y \
     apt-transport-https \
+    ca-certificates \
     wget \
     curl \
     build-essential \

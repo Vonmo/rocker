@@ -1,4 +1,3 @@
-#[macro_use]
 extern crate lazy_static;
 extern crate rocksdb;
 #[macro_use]
@@ -150,7 +149,7 @@ fn open<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
                 }
             }
             "set_compaction_style" => {
-                let style = try!(value.atom_to_string());
+                let style = value.atom_to_string()?;
                 if style == "level" {
                     opts.set_compaction_style(DBCompactionStyle::Level);
                 } else if style == "universal" {
@@ -504,7 +503,7 @@ fn create_cf<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
                 }
             }
             "set_compaction_style" => {
-                let style = try!(value.atom_to_string());
+                let style = value.atom_to_string()?;
                 if style == "level" {
                     opts.set_compaction_style(DBCompactionStyle::Level);
                 } else if style == "universal" {
