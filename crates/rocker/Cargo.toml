@@ -7,9 +7,10 @@ edition = "2018"
 
 [lib]
 name = "rocker"
+path = "src/lib.rs"
 crate-type = ["dylib"]
 
 [dependencies]
 lazy_static = "1.4.0"
-rustler = "0.21.0"
+rustler = { git = "https://github.com/rusterlium/rustler.git", branch = "master" }
 rocksdb = { git = "https://github.com/Elzor/rust-rocksdb.git", branch = "stable_5.14.2" }
