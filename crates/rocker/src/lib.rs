@@ -63,8 +63,9 @@ rustler_export_nifs!(
 );
 
 fn on_load<'a>(env: Env<'a>, _load_info: Term<'a>) -> bool {
-    resource_struct_init!(DbResource, env);
-    resource_struct_init!(IteratorResource, env);
+
+    resource!(DbResource, env);
+    resource!(IteratorResource, env);
     true
 }
 
