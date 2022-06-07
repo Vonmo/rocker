@@ -1,6 +1,6 @@
 [package]
 name = "rocker"
-version = "0.2.5"
+version = "0.2.6"
 authors = ["Maxim Molchanov <m.molchanov@vonmo.com>"]
 license = "MIT/Apache-2.0"
 edition = "2018"
@@ -11,5 +11,5 @@ crate-type = ["dylib"]
 
 [dependencies]
 lazy_static = "1.4.0"
-rustler = "0.21.0"
+rustler = "0.25.0"
 rocksdb = { git = "https://github.com/Elzor/rust-rocksdb.git", branch = "stable_5.14.2" }

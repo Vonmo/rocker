@@ -1,6 +1,6 @@
-FROM erlang:22.2 AS erlang
-FROM rust:1.40.0 AS rust
-FROM debian:10.2
+FROM erlang:24.3 AS erlang
+FROM rust:1.61.0 AS rust
+FROM debian:11.3
 
 LABEL author="Maxim Molchanov"
 LABEL maintainer="m.molchanov@vonmo.com"
@@ -38,8 +38,6 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     libclang-dev \
     procps \
     ca-certificates \
-    python-dev \
-    python-pip \
     python-setuptools \
     make \
     cmake \
