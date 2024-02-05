@@ -1,31 +1,35 @@
 -module(rocker).
 
 %% API
--export([lxcode/0,
-         open/2,
-         open_default/1,
-         open_cf_default/2,
-         destroy/1,
-         repair/1,
-         path/1,
-         put/3,
-         get/2,
-         delete/2,
-         tx/2,
-         iterator/2,
-         iterator_valid/1,
-         next/1,
-         prefix_iterator/2,
-         create_cf_default/2,
-         create_cf/3,
-         list_cf/1,
-         drop_cf/2,
-         put_cf/4,
-         get_cf/3,
-         delete_cf/3,
-         iterator_cf/3,
-         prefix_iterator_cf/3
-         ]).
+-export([
+    lxcode/0,
+    open/2,
+    open/1,
+    destroy/1,
+    repair/1,
+    get_db_path/1,
+    put/3,
+    get/2,
+    get/3,
+    delete/2,
+    tx/2,
+    iterator/2,
+    next/1,
+    prefix_iterator/2,
+    create_cf/2,
+    create_cf/3,
+    open_cf/2,
+    open_cf/3,
+    list_cf/2,
+    list_cf/1,
+    drop_cf/2,
+    put_cf/4,
+    get_cf/4,
+    get_cf/3,
+    delete_cf/3,
+    iterator_cf/3,
+    prefix_iterator_cf/3
+]).
 
 %% Native library support
 -export([load/0]).
@@ -41,11 +45,8 @@ lxcode() ->
 open(_Path, _Options) ->
     not_loaded(?LINE).
 
-open_default(_Path) ->
-    not_loaded(?LINE).
-
-open_cf_default(_Path, _Cfs) ->
-    not_loaded(?LINE).
+open(Path) ->
+    open(Path, #{}).
 
 destroy(_Path) ->
     not_loaded(?LINE).
@@ -53,60 +54,81 @@ destroy(_Path) ->
 repair(_Path) ->
     not_loaded(?LINE).
 
-path(_Db) ->
+get_db_path(_DbRef) ->
     not_loaded(?LINE).
 
-put(_Db, _Key, _Value) ->
+put(_DbRef, _Key, _Value) ->
     not_loaded(?LINE).
 
-get(_Db, _Key) ->
+get(_DbRef, _Key) ->
     not_loaded(?LINE).
 
-delete(_Db, _Key) ->
+get(DbRef, Key, Default) ->
+    case get(DbRef, Key) of
+        undefined ->
+            {ok, Default};
+        Some ->
+            Some
+    end.
+
+delete(_DbRef, _Key) ->
     not_loaded(?LINE).
 
-tx(_Db, _Operations) ->
+tx(_DbRef, _Txs) ->
     not_loaded(?LINE).
 
-iterator(_Db, _Mode) ->
+iterator(_DbRef, _Mode) ->
     not_loaded(?LINE).
 
-iterator_valid(_Iter) ->
+next(_IterRef) ->
     not_loaded(?LINE).
 
-next(_Iter) ->
+prefix_iterator(_DbRef, _Prefix) ->
     not_loaded(?LINE).
 
-prefix_iterator(_Db, _Prefix) ->
+create_cf(DbRef, CfName) ->
+    create_cf(DbRef, CfName, #{}).
+
+create_cf(_DbRef, _CfName, _Options) ->
     not_loaded(?LINE).
 
-create_cf_default(_Db, _Name) ->
+open_cf(_Path, _CfNames, _Options) ->
     not_loaded(?LINE).
 
-create_cf(_Db, _Name, _Options) ->
+open_cf(Path, CfNames) ->
+    open_cf(Path, CfNames, #{}).
+
+list_cf(_Path, _Options) ->
     not_loaded(?LINE).
 
-list_cf(_Path) ->
+list_cf(Path) ->
+    list_cf(Path, #{}).
+
+drop_cf(_DbRef, _CfName) ->
     not_loaded(?LINE).
 
-drop_cf(_Db, _Name) ->
+put_cf(_DbRef, _CfName, _Key, _Value) ->
     not_loaded(?LINE).
 
-put_cf(_Db, _Cf, _Key, _Value) ->
+get_cf(_DbRef, _CfName, _Key) ->
     not_loaded(?LINE).
 
-get_cf(_Db, _Cf, _Key) ->
+get_cf(DbRef, CfName, Key, Default) ->
+    case get_cf(DbRef, CfName, Key) of
+        undefined ->
+            {ok, Default};
+        Some ->
+            Some
+    end.
+
+delete_cf(_DbRef, _CfName, _Key) ->
     not_loaded(?LINE).
 
-delete_cf(_Db, _Cf, _Key) ->
+iterator_cf(_DbRef, _CfName, _Mode) ->
     not_loaded(?LINE).
 
-iterator_cf(_Db, _Cf, _Mode) ->
+prefix_iterator_cf(_DbRef, _CfName, _Prefix) ->
     not_loaded(?LINE).
-
-prefix_iterator_cf(_Db, _Cf, _Prefix) ->
-    not_loaded(?LINE).
-
 
 %%==============================================================================
 %% helpers

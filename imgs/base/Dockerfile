@@ -1,6 +1,6 @@
-FROM erlang:24.3 AS erlang
-FROM rust:1.61.0 AS rust
-FROM debian:11.3
+FROM erlang:26.2.1 AS erlang
+FROM rust:1.75.0-bookworm AS rust
+FROM debian:11.8
 
 LABEL author="Maxim Molchanov"
 LABEL maintainer="m.molchanov@vonmo.com"
@@ -37,8 +37,8 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     clang \
     libclang-dev \
     procps \
-    ca-certificates \
-    python-setuptools \
+    python3-full \
+    python3-pip \
     make \
     cmake \
     locales \
@@ -46,10 +46,10 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     && rm -rf /var/lib/apt/lists /var/cache/apt \
     && find /usr/local -name examples | xargs rm -rf
 
-RUN echo "LC_ALL=en_US.UTF-8" >> /etc/environment
-RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
-RUN echo "LANG=en_US.UTF-8" > /etc/locale.conf
-RUN locale-gen en_US.UTF-8
+RUN echo "LC_ALL=en_US.UTF-8" >> /etc/environment \
+ && echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen \
+ && echo "LANG=en_US.UTF-8" > /etc/locale.conf \
+ && locale-gen en_US.UTF-8
 
 ADD ./docker-entry.sh /docker-entry.sh
 
