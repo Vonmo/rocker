@@ -1,11 +1,10 @@
 use atoms::{end_of_iterator, error, ok, undefined, unknown_cf, vsn1};
+use options::RockerOptions;
 use rocksdb::{DBIterator, Direction, IteratorMode, Options, WriteBatch, DB};
 use rustler::resource::ResourceArc;
 use rustler::types::list::ListIterator;
 use rustler::{Binary, Encoder, Env, NifResult, OwnedBinary, Term};
 use std::sync::{Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
-
-use options::RockerOptions;
 
 // =================================================================================================
 // resource
@@ -74,16 +73,18 @@ fn open(env: Env, path: String, opts: RockerOptions) -> NifResult<Term> {
 }
 
 #[rustler::nif(schedule = "DirtyIo")]
-fn destroy(env: Env, path: String) -> NifResult<Term> {
-    match DB::destroy(&Options::default(), path) {
+fn destroy(env: Env, path: String, opts: RockerOptions) -> NifResult<Term> {
+    let db_opts = Options::from(opts);
+    match DB::destroy(&db_opts, path) {
         Ok(_) => Ok((ok()).encode(env)),
         Err(e) => Ok((error(), e.to_string()).encode(env)),
     }
 }
 
 #[rustler::nif(schedule = "DirtyIo")]
-fn repair(env: Env, path: String) -> NifResult<Term> {
-    match DB::repair(&Options::default(), path) {
+fn repair(env: Env, path: String, opts: RockerOptions) -> NifResult<Term> {
+    let db_opts = Options::from(opts);
+    match DB::repair(&db_opts, path) {
         Ok(_) => Ok((ok()).encode(env)),
         Err(e) => Ok((error(), e.to_string()).encode(env)),
     }

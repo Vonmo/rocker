@@ -5,7 +5,9 @@
     lxcode/0,
     open/2,
     open/1,
+    destroy/2,
     destroy/1,
+    repair/2,
     repair/1,
     get_db_path/1,
     put/3,
@@ -48,11 +50,17 @@ open(_Path, _Options) ->
 open(Path) ->
     open(Path, #{}).
 
-destroy(_Path) ->
+destroy(_Path, _Options) ->
     not_loaded(?LINE).
 
-repair(_Path) ->
+destroy(Path) ->
+    destroy(Path, #{}).
+
+repair(_Path, _Options) ->
     not_loaded(?LINE).
+
+repair(Path) ->
+    repair(Path, #{}).
 
 get_db_path(_DbRef) ->
     not_loaded(?LINE).

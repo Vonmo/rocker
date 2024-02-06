@@ -20,7 +20,7 @@ Rocker is NIF for Erlang which uses Rust binding for [RocksDB](https://github.co
 ```
 defp deps do
  [
-   {:rocker, git: "https://github.com/Vonmo/rocker.git", tag: "v5.14.2_3"}      
+   {:rocker, git: "https://github.com/Vonmo/rocker.git", tag: "v5.14.2_3"}
  ]
 end
 ```
@@ -41,6 +41,7 @@ end
 * Transactions
 * Data compression
 * Support of flexible storage setup
+* Delete Range
 
 ## API
 ### Open database
@@ -49,7 +50,7 @@ You can work with database in two modes:
 1. Default column family. In this mode all your keys are stored in the same set. Rocksdb makes it possible to fine-tune the storage flexibly according to your current tasks. Depending on them, database can be opened in two different ways:
 using a standard set of options
 ```
-{ok, Db} = rocker:open_default(<<"/project/priv/db_default_path">>).
+{ok, Db} = rocker:open(<<"/project/priv/db_default_path">>).
 ```
 This operation will result in a pointer for working with database. The database itself will be blocked for any other attempts to open it. Immediately after clearing of this pointer it will be unlocked automatically.
 fine-tuning options to your needs
@@ -67,10 +68,10 @@ set_compaction_style => universal
 ```
 {ok, Db} = case rocker:list_cf(BookDbPath) of
 {ok, CfList} ->
-   rocker:open_cf_default(BookDbPath, CfList);
+   rocker:open_cf(BookDbPath, CfList);
 _ ->
    CfList = [],
-   rocker:open_default(BookDbPath)
+   rocker:open(BookDbPath)
 end.
 ```
 ### Delete database
@@ -84,11 +85,11 @@ In case of a system failure database can be recovered with the help of `rocker:r
 1. writing of descriptor
 
 #### Column family creation
-`rocker:create_cf_default(Db, <<"testcf1">>) -> ok.`
+`rocker:create_cf(Db, <<"testcf1">>) -> ok.`
 
 #### Column family deletion
 `rocker:drop_cf(Db, <<"testcf">>) -> ok.`
- 
+
 ### CRUD operations
 #### Data writing by key
 `rocker:put(Db, <<"key">>, <<"value">>) -> ok.`
@@ -159,10 +160,11 @@ It’s commonly required to simultaneously write the changes of a key set. Rocke
 ```
 
 ## Performance
-In a set of tests you can find a performance test. It demonstrates about 30k read RPS and 200k write RPS on my machine. In real conditions we might expect something about 15–20k read RPS and 120k write RPS with average amount of data being about 1 kB per key and the total number of keys exceeding 1 billion.
+In a set of tests you can find a performance test. It demonstrates about 135k write RPS and 2.1M read RPS on my machine. In real conditions we might expect something about 50k write RPS and 400k read RPS with average amount of data being about 1 kB per key and the total number of keys exceeding 1 billion.
 
 ## Status
 Passed all the functional and performance tests.
+Ready for real projects.
 
 ## Versioning
 The release version follows the RocksDB's one.
