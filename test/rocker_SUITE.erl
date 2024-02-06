@@ -34,7 +34,8 @@ groups() ->
         put_get,
         put_get_bin,
         delete,
-        write_batch
+        write_batch,
+        delete_range
       ]},
 
     {iterator,
@@ -64,7 +65,8 @@ groups() ->
         next_from_forward_cf,
         next_from_reverse_cf,
         prefix_iterator_cf,
-        write_batch_cf
+        write_batch_cf,
+        delete_range_cf
       ]},
 
     {perf,
@@ -221,6 +223,26 @@ write_batch(_) ->
   {ok, <<"v1">>} = rocker:get(Db, <<"k1">>),
   {ok, <<"v2">>} = rocker:get(Db, <<"k2">>),
   {ok, <<"v3">>} = rocker:get(Db, <<"k3">>),
+  ok.
+
+delete_range(_) ->
+  Path = <<"/project/priv/db_range_delete">>,
+  {ok, Db} = rocker:open(Path),
+  ok = rocker:put(Db, <<"k0">>, <<"v0">>),
+  {ok, 5} = rocker:tx(Db, [
+    {put, <<"k1">>, <<"v1">>},
+    {put, <<"k2">>, <<"v2">>},
+    {put, <<"k3">>, <<"v3">>},
+    {put, <<"k4">>, <<"v4">>},
+    {put, <<"k5">>, <<"v5">>}
+  ]),
+
+  ok = rocker:delete_range(Db, <<"k2">>, <<"k4">>),
+  {ok, <<"v1">>} = rocker:get(Db, <<"k1">>),
+  undefined = rocker:get(Db, <<"k2">>),
+  undefined = rocker:get(Db, <<"k3">>),
+  {ok, <<"v4">>} = rocker:get(Db, <<"k4">>),
+  {ok, <<"v5">>} = rocker:get(Db, <<"k5">>),
   ok.
 
 %% =============================================================================
@@ -588,6 +610,30 @@ write_batch_cf(_) ->
   {ok, <<"v1">>} = rocker:get_cf(Db, Cf2, <<"k1">>),
   {ok, <<"v2">>} = rocker:get_cf(Db, Cf2, <<"k2">>),
   {ok, <<"v3">>} = rocker:get_cf(Db, Cf2, <<"k3">>),
+
+  ok.
+
+delete_range_cf(_) ->
+  Path = <<"/project/priv/db_delete_range_cf">>,
+  rocker:destroy(Path),
+  {ok, Db} = rocker:open(Path),
+  Cf = <<"test_cf1">>,
+  ok = rocker:create_cf(Db, Cf),
+
+  {ok, 5} = rocker:tx(Db, [
+    {put_cf, Cf, <<"k1">>, <<"v1">>},
+    {put_cf, Cf, <<"k2">>, <<"v2">>},
+    {put_cf, Cf, <<"k3">>, <<"v3">>},
+    {put_cf, Cf, <<"k4">>, <<"v4">>},
+    {put_cf, Cf, <<"k5">>, <<"v5">>}
+  ]),
+
+  ok = rocker:delete_range_cf(Db, Cf, <<"k2">>, <<"k4">>),
+  {ok, <<"v1">>} = rocker:get_cf(Db, Cf, <<"k1">>),
+  undefined = rocker:get_cf(Db, Cf, <<"k2">>),
+  undefined = rocker:get_cf(Db, Cf, <<"k3">>),
+  {ok, <<"v4">>} = rocker:get_cf(Db, Cf, <<"k4">>),
+  {ok, <<"v5">>} = rocker:get_cf(Db, Cf, <<"k5">>),
 
   ok.
 

@@ -30,7 +30,9 @@
     get_cf/3,
     delete_cf/3,
     iterator_cf/3,
-    prefix_iterator_cf/3
+    prefix_iterator_cf/3,
+    delete_range/3,
+    delete_range_cf/4
 ]).
 
 %% Native library support
@@ -136,6 +138,12 @@ iterator_cf(_DbRef, _CfName, _Mode) ->
     not_loaded(?LINE).
 
 prefix_iterator_cf(_DbRef, _CfName, _Prefix) ->
+    not_loaded(?LINE).
+
+delete_range(_DbRef, _KeyFrom, _KeyTo) ->
+    not_loaded(?LINE).
+
+delete_range_cf(_DbRef, _CfName, _KeyFrom, _KeyTo) ->
     not_loaded(?LINE).
 
 %%==============================================================================

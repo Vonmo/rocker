@@ -141,7 +141,7 @@ fn delete<'a>(
     }
 }
 
-#[rustler::nif]
+#[rustler::nif(schedule = "DirtyIo")]
 fn tx<'a>(env: Env<'a>, resource: ResourceArc<DbResource>, txs: Term<'a>) -> NifResult<Term<'a>> {
     let db_guard = resource.write();
     let iter: ListIterator = txs.decode()?;
@@ -436,6 +436,42 @@ fn prefix_iterator_cf<'a>(
                 iter: Mutex::new(eternal_iter),
             });
             Ok((ok(), resource.encode(env)).encode(env))
+        }
+    }
+}
+
+#[rustler::nif(schedule = "DirtyIo")]
+fn delete_range<'a>(
+    env: Env<'a>,
+    resource: ResourceArc<DbResource>,
+    key_from: LazyBinary<'a>,
+    key_to: LazyBinary<'a>,
+) -> NifResult<Term<'a>> {
+    let db_guard = resource.write();
+    let mut batch = WriteBatch::default();
+    batch.delete_range(&key_from.as_ref(), &key_to.as_ref());
+    match db_guard.write(batch) {
+        Ok(_) => Ok((ok()).encode(env)),
+        Err(e) => Ok((error(), e.to_string()).encode(env)),
+    }
+}
+
+#[rustler::nif(schedule = "DirtyIo")]
+fn delete_range_cf<'a>(
+    env: Env<'a>,
+    resource: ResourceArc<DbResource>,
+    cf_name: String,
+    key_from: LazyBinary<'a>,
+    key_to: LazyBinary<'a>,
+) -> NifResult<Term<'a>> {
+    let db_guard = resource.write();
+    match db_guard.cf_handle(&cf_name.as_ref()) {
+        None => Ok((error(), unknown_cf()).encode(env)),
+        Some(cf_handler) => {
+            match db_guard.delete_range_cf(cf_handler, &key_from.as_ref(), &key_to.as_ref()) {
+                Ok(_) => Ok((ok()).encode(env)),
+                Err(e) => Ok((error(), e.to_string()).encode(env)),
+            }
         }
     }
 }
