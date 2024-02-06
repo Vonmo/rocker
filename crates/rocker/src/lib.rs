@@ -34,6 +34,8 @@ rustler::init!(
         nif::prefix_iterator_cf,
         nif::delete_range,
         nif::delete_range_cf,
+        nif::multi_get,
+        nif::multi_get_cf,
     ],
     load = nif::on_load
 );

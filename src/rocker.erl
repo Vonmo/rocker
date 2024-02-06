@@ -32,7 +32,9 @@
     iterator_cf/3,
     prefix_iterator_cf/3,
     delete_range/3,
-    delete_range_cf/4
+    delete_range_cf/4,
+    multi_get/2,
+    multi_get_cf/2
 ]).
 
 %% Native library support
@@ -144,6 +146,12 @@ delete_range(_DbRef, _KeyFrom, _KeyTo) ->
     not_loaded(?LINE).
 
 delete_range_cf(_DbRef, _CfName, _KeyFrom, _KeyTo) ->
+    not_loaded(?LINE).
+
+multi_get(_DbRef, _Keys) ->
+    not_loaded(?LINE).
+
+multi_get_cf(_DbRef, _Keys) ->
     not_loaded(?LINE).
 
 %%==============================================================================

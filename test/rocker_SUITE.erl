@@ -35,7 +35,8 @@ groups() ->
         put_get_bin,
         delete,
         write_batch,
-        delete_range
+        delete_range,
+        multi_get
       ]},
 
     {iterator,
@@ -66,7 +67,8 @@ groups() ->
         next_from_reverse_cf,
         prefix_iterator_cf,
         write_batch_cf,
-        delete_range_cf
+        delete_range_cf,
+        multi_get_cf
       ]},
 
     {perf,
@@ -243,6 +245,31 @@ delete_range(_) ->
   undefined = rocker:get(Db, <<"k3">>),
   {ok, <<"v4">>} = rocker:get(Db, <<"k4">>),
   {ok, <<"v5">>} = rocker:get(Db, <<"k5">>),
+  ok.
+
+multi_get(_) ->
+  Path = <<"/project/priv/db_multi_get">>,
+  {ok, Db} = rocker:open(Path),
+  {ok, 3} = rocker:tx(Db, [
+    {put, <<"k1">>, <<"v1">>},
+    {put, <<"k2">>, <<"v2">>},
+    {put, <<"k3">>, <<"v3">>}
+  ]),
+  {ok, [
+    undefined,
+    {ok, <<"v1">>},
+    {ok, <<"v2">>},
+    {ok, <<"v3">>},
+    undefined,
+    undefined
+  ]} = rocker:multi_get(Db, [
+      <<"k0">>,
+      <<"k1">>,
+      <<"k2">>,
+      <<"k3">>,
+      <<"k4">>,
+      <<"k5">>
+  ]),
   ok.
 
 %% =============================================================================
@@ -634,6 +661,65 @@ delete_range_cf(_) ->
   undefined = rocker:get_cf(Db, Cf, <<"k3">>),
   {ok, <<"v4">>} = rocker:get_cf(Db, Cf, <<"k4">>),
   {ok, <<"v5">>} = rocker:get_cf(Db, Cf, <<"k5">>),
+
+  ok.
+
+multi_get_cf(_) ->
+  Path = <<"/project/priv/db_multi_get_cf">>,
+  rocker:destroy(Path),
+  {ok, Db} = rocker:open(Path),
+  Cf1 = <<"test_cf1">>,
+  ok = rocker:create_cf(Db, Cf1),
+  Cf2 = <<"test_cf2">>,
+  ok = rocker:create_cf(Db, Cf2),
+  Cf3 = <<"test_cf3">>,
+  ok = rocker:create_cf(Db, Cf3),
+
+  {ok, 5} = rocker:tx(Db, [
+    {put_cf, Cf1, <<"k1">>, <<"v1">>},
+    {put_cf, Cf2, <<"k2">>, <<"v2">>},
+    {put_cf, Cf3, <<"k3">>, <<"v3">>},
+    {put_cf, Cf1, <<"k4">>, <<"v4">>},
+    {put_cf, Cf2, <<"k5">>, <<"v5">>}
+  ]),
+
+  {ok, [
+    {ok, <<"v1">>},
+    undefined,
+    undefined,
+    {ok, <<"v4">>},
+    undefined,
+
+    undefined,
+    {ok, <<"v2">>},
+    undefined,
+    undefined,
+    {ok, <<"v5">>},
+
+    undefined,
+    undefined,
+    {ok, <<"v3">>},
+    undefined,
+    undefined
+  ]} = rocker:multi_get_cf(Db,[
+    {Cf1, <<"k1">>},
+    {Cf1, <<"k2">>},
+    {Cf1, <<"k3">>},
+    {Cf1, <<"k4">>},
+    {Cf1, <<"k5">>},
+
+    {Cf2, <<"k1">>},
+    {Cf2, <<"k2">>},
+    {Cf2, <<"k3">>},
+    {Cf2, <<"k4">>},
+    {Cf2, <<"k5">>},
+
+    {Cf3, <<"k1">>},
+    {Cf3, <<"k2">>},
+    {Cf3, <<"k3">>},
+    {Cf3, <<"k4">>},
+    {Cf3, <<"k5">>}
+  ]),
 
   ok.
 

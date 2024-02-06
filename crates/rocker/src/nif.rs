@@ -1,6 +1,6 @@
 use atoms::{end_of_iterator, error, ok, undefined, unknown_cf, vsn1};
 use options::RockerOptions;
-use rocksdb::{DBIterator, Direction, IteratorMode, Options, WriteBatch, DB};
+use rocksdb::{ColumnFamily, DBIterator, Direction, IteratorMode, Options, WriteBatch, DB};
 use rustler::resource::ResourceArc;
 use rustler::types::list::ListIterator;
 use rustler::{Binary, Encoder, Env, NifResult, OwnedBinary, Term};
@@ -474,6 +474,68 @@ fn delete_range_cf<'a>(
             }
         }
     }
+}
+
+#[rustler::nif]
+fn multi_get<'a>(
+    env: Env<'a>,
+    resource: ResourceArc<DbResource>,
+    keys: Term<'a>,
+) -> NifResult<Term<'a>> {
+    let db_guard = resource.read();
+    let keys_iter: ListIterator = keys.decode()?;
+    let mut keys_list: Vec<String> = Vec::new();
+    for elem in keys_iter {
+        let k: String = elem.decode()?;
+        keys_list.push(k);
+    }
+    let values = db_guard.multi_get(keys_list);
+    let mut result: Vec<Term> = Vec::new();
+    for v in values {
+        match v {
+            Ok(Some(item)) => {
+                let mut value = OwnedBinary::new(item[..].len()).unwrap();
+                value.clone_from_slice(&item[..]);
+                result.push((ok(), value.release(env)).encode(env))
+            }
+            Ok(None) => result.push((undefined()).encode(env)),
+            Err(e) => result.push((error(), e.to_string()).encode(env)),
+        }
+    }
+    Ok((ok(), result).encode(env))
+}
+
+#[rustler::nif]
+fn multi_get_cf<'a>(
+    env: Env<'a>,
+    resource: ResourceArc<DbResource>,
+    keys: Term<'a>,
+) -> NifResult<Term<'a>> {
+    let db_guard = resource.read();
+    let keys_iter: ListIterator = keys.decode()?;
+    let mut keys_list: Vec<(&ColumnFamily, Vec<u8>)> = Vec::new();
+    for elem in keys_iter {
+        let x = elem.decode()?;
+        let xs: Vec<Term> = ::rustler::types::tuple::get_tuple(x)?;
+        let cf_name: String = xs[0].decode()?;
+        let key: Binary = xs[1].decode()?;
+        let cf_handler = db_guard.cf_handle(&cf_name.as_ref());
+        keys_list.push((cf_handler.unwrap(), key.to_vec()))
+    }
+    let values = db_guard.multi_get_cf(keys_list);
+    let mut result: Vec<Term> = Vec::new();
+    for v in values {
+        match v {
+            Ok(Some(item)) => {
+                let mut value = OwnedBinary::new(item[..].len()).unwrap();
+                value.clone_from_slice(&item[..]);
+                result.push((ok(), value.release(env)).encode(env))
+            }
+            Ok(None) => result.push((undefined()).encode(env)),
+            Err(e) => result.push((error(), e.to_string()).encode(env)),
+        }
+    }
+    Ok((ok(), result).encode(env))
 }
 
 // =================================================================================================
