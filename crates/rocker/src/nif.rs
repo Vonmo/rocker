@@ -100,8 +100,8 @@ fn get_db_path(env: Env, resource: ResourceArc<DbResource>) -> NifResult<Term> {
 fn put<'a>(
     env: Env<'a>,
     resource: ResourceArc<DbResource>,
-    key: Binary<'a>,
-    val: Binary<'a>,
+    key: LazyBinary<'a>,
+    val: LazyBinary<'a>,
 ) -> NifResult<Term<'a>> {
     let db_guard = resource.write();
     match db_guard.put(&key.as_ref(), &val.as_ref()) {
@@ -114,7 +114,7 @@ fn put<'a>(
 fn get<'a>(
     env: Env<'a>,
     resource: ResourceArc<DbResource>,
-    key: Binary<'a>,
+    key: LazyBinary<'a>,
 ) -> NifResult<Term<'a>> {
     let db_guard = resource.read();
     match db_guard.get(&key.as_ref()) {
@@ -132,7 +132,7 @@ fn get<'a>(
 fn delete<'a>(
     env: Env<'a>,
     resource: ResourceArc<DbResource>,
-    key: Binary<'a>,
+    key: LazyBinary<'a>,
 ) -> NifResult<Term<'a>> {
     let db_guard = resource.write();
     match db_guard.delete(&key.as_ref()) {
@@ -250,7 +250,7 @@ fn next<'a>(env: Env<'a>, resource: ResourceArc<IteratorResource>) -> NifResult<
 fn prefix_iterator<'a>(
     env: Env<'a>,
     resource: ResourceArc<DbResource>,
-    prefix: Binary<'a>,
+    prefix: LazyBinary<'a>,
 ) -> NifResult<Term<'a>> {
     let db_guard = resource.read();
     let iter = db_guard.prefix_iterator(&prefix.as_ref());
@@ -322,8 +322,8 @@ fn put_cf<'a>(
     env: Env<'a>,
     resource: ResourceArc<DbResource>,
     cf_name: String,
-    key: Binary<'a>,
-    val: Binary<'a>,
+    key: LazyBinary<'a>,
+    val: LazyBinary<'a>,
 ) -> NifResult<Term<'a>> {
     let db_guard = resource.write();
     let cf_handler = db_guard.cf_handle(&cf_name.as_ref()).unwrap();
@@ -338,7 +338,7 @@ fn get_cf<'a>(
     env: Env<'a>,
     resource: ResourceArc<DbResource>,
     cf_name: String,
-    key: Binary<'a>,
+    key: LazyBinary<'a>,
 ) -> NifResult<Term<'a>> {
     let db_guard = resource.read();
     let cf_handler = db_guard.cf_handle(&cf_name.as_ref()).unwrap();
@@ -358,7 +358,7 @@ fn delete_cf<'a>(
     env: Env<'a>,
     resource: ResourceArc<DbResource>,
     cf_name: String,
-    key: Binary<'a>,
+    key: LazyBinary<'a>,
 ) -> NifResult<Term<'a>> {
     let db_guard = resource.read();
     let cf_handler = db_guard.cf_handle(&cf_name.as_ref()).unwrap();
@@ -424,7 +424,7 @@ fn prefix_iterator_cf<'a>(
     env: Env<'a>,
     resource: ResourceArc<DbResource>,
     cf_name: String,
-    prefix: Binary<'a>,
+    prefix: LazyBinary<'a>,
 ) -> NifResult<Term<'a>> {
     let db_guard = resource.read();
     match db_guard.cf_handle(&cf_name.as_ref()) {
@@ -436,6 +436,42 @@ fn prefix_iterator_cf<'a>(
                 iter: Mutex::new(eternal_iter),
             });
             Ok((ok(), resource.encode(env)).encode(env))
+        }
+    }
+}
+
+// =================================================================================================
+// helpers
+// =================================================================================================
+
+/// Represents either a borrowed `Binary` or `OwnedBinary`.
+///
+/// `LazyBinary` allows for the most efficient conversion from an
+/// Erlang term to a byte slice. If the term is an actual Erlang
+/// binary, constructing `LazyBinary` is essentially
+/// zero-cost. However, if the term is any other Erlang type, it is
+/// converted to an `OwnedBinary`, which requires a heap allocation.
+enum LazyBinary<'a> {
+    Owned(OwnedBinary),
+    Borrowed(Binary<'a>),
+}
+
+impl<'a> std::ops::Deref for LazyBinary<'a> {
+    type Target = [u8];
+    fn deref(&self) -> &[u8] {
+        match self {
+            Self::Owned(owned) => owned.as_ref(),
+            Self::Borrowed(borrowed) => borrowed.as_ref(),
+        }
+    }
+}
+
+impl<'a> rustler::Decoder<'a> for LazyBinary<'a> {
+    fn decode(term: Term<'a>) -> NifResult<Self> {
+        if term.is_binary() {
+            Ok(Self::Borrowed(Binary::from_term(term)?))
+        } else {
+            Ok(Self::Owned(term.to_binary()))
         }
     }
 }
