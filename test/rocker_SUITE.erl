@@ -26,7 +26,8 @@ groups() ->
         open_multi_ptr,
         destroy,
         repair,
-        get_db_path
+        get_db_path,
+        latest_sequence_number
       ]},
 
     {atomic,
@@ -186,6 +187,17 @@ get_db_path(_) ->
   Path = <<"/project/priv/db_get_path">>,
   {ok, Db} = rocker:open(Path),
   {ok, Path} = rocker:get_db_path(Db),
+  ok.
+
+latest_sequence_number(_) ->
+  Path = <<"/project/priv/db_latest_sequence_number">>,
+  rocker:destroy(Path),
+  {ok, Db} = rocker:open(Path),
+  {ok, 0} = rocker:latest_sequence_number(Db),
+  ok = rocker:put(Db, <<"k1">>, <<"v1">>),
+  {ok, 1} = rocker:latest_sequence_number(Db),
+  ok = rocker:put(Db, <<"k2">>, <<"v2">>),
+  {ok, 2} = rocker:latest_sequence_number(Db),
   ok.
 
 %% =============================================================================

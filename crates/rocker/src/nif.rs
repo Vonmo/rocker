@@ -80,6 +80,12 @@ fn lxcode(env: Env) -> NifResult<Term> {
 }
 
 #[rustler::nif]
+fn latest_sequence_number(env: Env, resource: ResourceArc<DbResource>) -> NifResult<Term> {
+    let db_guard = resource.read();
+    Ok((ok(), db_guard.latest_sequence_number() as u64).encode(env))
+}
+
+#[rustler::nif]
 fn open(env: Env, path: String, opts: RockerOptions) -> NifResult<Term> {
     let db_opts = Options::from(opts);
     match DB::open(&db_opts, path) {

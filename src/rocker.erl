@@ -3,6 +3,7 @@
 %% API
 -export([
     lxcode/0,
+    latest_sequence_number/1,
     open/2,
     open/1,
     destroy/2,
@@ -55,6 +56,9 @@
 %%==============================================================================
 
 lxcode() ->
+    not_loaded(?LINE).
+
+latest_sequence_number(_DbRef) ->
     not_loaded(?LINE).
 
 open(_Path, _Options) ->

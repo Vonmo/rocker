@@ -12,6 +12,7 @@ rustler::init!(
     "rocker",
     [
         nif::lxcode,
+        nif::latest_sequence_number,
         nif::open,
         nif::destroy,
         nif::repair,
