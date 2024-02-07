@@ -38,7 +38,8 @@ groups() ->
         delete,
         write_batch,
         delete_range,
-        multi_get
+        multi_get,
+        key_may_exist
       ]},
 
     {iterator,
@@ -70,7 +71,8 @@ groups() ->
         prefix_iterator_cf,
         write_batch_cf,
         delete_range_cf,
-        multi_get_cf
+        multi_get_cf,
+        key_may_exist_cf
       ]},
 
     {snapshot,
@@ -294,6 +296,15 @@ multi_get(_) ->
       <<"k4">>,
       <<"k5">>
   ]),
+  ok.
+
+key_may_exist(_) ->
+  Path = <<"/project/priv/db_key_may_exist">>,
+  rocker:destroy(Path),
+  {ok, Db} = rocker:open(Path),
+  {ok, false} = rocker:key_may_exist(Db, <<"k1">>),
+  ok = rocker:put(Db, <<"k1">>, <<"v1">>),
+  {ok, true} = rocker:key_may_exist(Db, <<"k1">>),
   ok.
 
 %% =============================================================================
@@ -745,6 +756,17 @@ multi_get_cf(_) ->
     {Cf3, <<"k5">>}
   ]),
 
+  ok.
+
+key_may_exist_cf(_) ->
+  Path = <<"/project/priv/db_key_may_exist_cf">>,
+  rocker:destroy(Path),
+  {ok, Db} = rocker:open(Path),
+  Cf = <<"test_cf1">>,
+  ok = rocker:create_cf(Db, Cf),
+  {ok, false} = rocker:key_may_exist_cf(Db, Cf, <<"k1">>),
+  ok = rocker:put_cf(Db, Cf, <<"k1">>, <<"v1">>),
+  {ok, true} = rocker:key_may_exist_cf(Db, Cf, <<"k1">>),
   ok.
 
 %% =============================================================================

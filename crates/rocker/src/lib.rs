@@ -37,6 +37,8 @@ rustler::init!(
         nif::delete_range_cf,
         nif::multi_get,
         nif::multi_get_cf,
+        nif::key_may_exist,
+        nif::key_may_exist_cf,
         nif::snapshot,
         nif::snapshot_get,
         nif::snapshot_get_cf,

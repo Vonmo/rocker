@@ -561,6 +561,34 @@ fn multi_get_cf<'a>(
 }
 
 #[rustler::nif]
+fn key_may_exist<'a>(
+    env: Env<'a>,
+    resource: ResourceArc<DbResource>,
+    key: LazyBinary<'a>,
+) -> NifResult<Term<'a>> {
+    let db_guard = resource.read();
+    let exists = db_guard.key_may_exist(&key.as_ref());
+    Ok((ok(), exists).encode(env))
+}
+
+#[rustler::nif]
+fn key_may_exist_cf<'a>(
+    env: Env<'a>,
+    resource: ResourceArc<DbResource>,
+    cf_name: String,
+    key: LazyBinary<'a>,
+) -> NifResult<Term<'a>> {
+    let db_guard = resource.read();
+    match db_guard.cf_handle(&cf_name.as_ref()) {
+        None => Ok((ok(), false).encode(env)),
+        Some(cf_handler) => {
+            let exists = db_guard.key_may_exist_cf(cf_handler, &key.as_ref());
+            Ok((ok(), exists).encode(env))
+        }
+    }
+}
+
+#[rustler::nif]
 fn snapshot(env: Env, resource: ResourceArc<DbResource>) -> NifResult<Term> {
     let db_guard = resource.read();
     let snapshot = db_guard.snapshot();
@@ -678,11 +706,7 @@ fn snapshot_multi_get_cf<'a>(env: Env<'a>, resource: Term, keys: Term<'a>) -> Ni
 }
 
 #[rustler::nif]
-fn snapshot_iterator<'a>(
-    env: Env<'a>,
-    resource: Term,
-    mode: Term<'a>,
-) -> NifResult<Term<'a>> {
+fn snapshot_iterator<'a>(env: Env<'a>, resource: Term, mode: Term<'a>) -> NifResult<Term<'a>> {
     let terms: Vec<Term> = ::rustler::types::tuple::get_tuple(resource)?;
     let snap_resource: ResourceArc<SnapshotResource> = terms[2].decode()?;
     let snap_guard = snap_resource.lock();
@@ -704,7 +728,8 @@ fn snapshot_iterator<'a>(
                         _ => snap_guard.iterator(IteratorMode::From(&from, Direction::Forward)),
                     }
                 } else {
-                    snap_iterator = snap_guard.iterator(IteratorMode::From(&from, Direction::Forward));
+                    snap_iterator =
+                        snap_guard.iterator(IteratorMode::From(&from, Direction::Forward));
                 }
             }
             _ => {}

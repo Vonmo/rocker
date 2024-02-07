@@ -36,6 +36,8 @@
     delete_range_cf/4,
     multi_get/2,
     multi_get_cf/2,
+    key_may_exist/2,
+    key_may_exist_cf/3,
     snapshot/1,
     snapshot_get/2,
     snapshot_get/3,
@@ -165,6 +167,12 @@ multi_get(_DbRef, _Keys) ->
     not_loaded(?LINE).
 
 multi_get_cf(_DbRef, _Keys) ->
+    not_loaded(?LINE).
+
+key_may_exist(_DfRef, _Key) ->
+    not_loaded(?LINE).
+
+key_may_exist_cf(_DbRef, _CfName, _Key) ->
     not_loaded(?LINE).
 
 snapshot(_DbRef) ->
