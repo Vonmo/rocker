@@ -1,6 +1,8 @@
-use atoms::{end_of_iterator, error, ok, undefined, unknown_cf, vsn1};
+use atoms::{end_of_iterator, error, ok, snap, undefined, unknown_cf, vsn1};
 use options::RockerOptions;
-use rocksdb::{ColumnFamily, DBIterator, Direction, IteratorMode, Options, WriteBatch, DB};
+use rocksdb::{
+    ColumnFamily, DBIterator, Direction, IteratorMode, Options, Snapshot, WriteBatch, DB,
+};
 use rustler::resource::ResourceArc;
 use rustler::types::list::ListIterator;
 use rustler::{Binary, Encoder, Env, NifResult, OwnedBinary, Term};
@@ -36,6 +38,19 @@ impl From<DB> for DbResource {
 // ---------------------------------------------------------------------
 
 #[repr(transparent)]
+struct SnapshotResource {
+    snap: Mutex<Snapshot<'static>>,
+}
+
+impl SnapshotResource {
+    fn lock(&self) -> MutexGuard<'_, Snapshot<'static>> {
+        self.snap.lock().unwrap()
+    }
+}
+
+// ---------------------------------------------------------------------
+
+#[repr(transparent)]
 struct IteratorResource {
     iter: Mutex<DBIterator<'static>>,
 }
@@ -50,6 +65,7 @@ impl IteratorResource {
 
 pub fn on_load(env: Env, _load_info: Term) -> bool {
     rustler::resource!(DbResource, env);
+    rustler::resource!(SnapshotResource, env);
     rustler::resource!(IteratorResource, env);
     true
 }
@@ -536,6 +552,220 @@ fn multi_get_cf<'a>(
         }
     }
     Ok((ok(), result).encode(env))
+}
+
+#[rustler::nif]
+fn snapshot(env: Env, resource: ResourceArc<DbResource>) -> NifResult<Term> {
+    let db_guard = resource.read();
+    let snapshot = db_guard.snapshot();
+    let eternal_snap: Snapshot<'static> = unsafe { std::mem::transmute(snapshot) };
+    let snap_resource = ResourceArc::new(SnapshotResource {
+        snap: Mutex::new(eternal_snap),
+    });
+    Ok((
+        ok(),
+        (snap(), resource.encode(env), snap_resource.encode(env)).encode(env),
+    )
+        .encode(env))
+}
+
+#[rustler::nif]
+fn snapshot_get<'a>(env: Env<'a>, resource: Term<'a>, key: LazyBinary<'a>) -> NifResult<Term<'a>> {
+    let terms: Vec<Term> = ::rustler::types::tuple::get_tuple(resource)?;
+    let resource: ResourceArc<SnapshotResource> = terms[2].decode()?;
+    let snap_guard = resource.lock();
+    match snap_guard.get(&key.as_ref()) {
+        Ok(Some(v)) => {
+            let mut value = OwnedBinary::new(v[..].len()).unwrap();
+            value.clone_from_slice(&v[..]);
+            Ok((ok(), value.release(env)).encode(env))
+        }
+        Ok(None) => Ok((undefined()).encode(env)),
+        Err(e) => Ok((error(), e.to_string()).encode(env)),
+    }
+}
+
+#[rustler::nif]
+fn snapshot_get_cf<'a>(
+    env: Env<'a>,
+    resource: Term,
+    cf_name: String,
+    key: LazyBinary<'a>,
+) -> NifResult<Term<'a>> {
+    let terms: Vec<Term> = ::rustler::types::tuple::get_tuple(resource)?;
+    let db_resource: ResourceArc<DbResource> = terms[1].decode()?;
+    let snap_resource: ResourceArc<SnapshotResource> = terms[2].decode()?;
+    let db_guard = db_resource.read();
+    let snap_guard = snap_resource.lock();
+
+    let cf_handler = db_guard.cf_handle(&cf_name.as_ref()).unwrap();
+    match snap_guard.get_cf(cf_handler, &key.as_ref()) {
+        Ok(Some(v)) => {
+            let mut value = OwnedBinary::new(v[..].len()).unwrap();
+            value.clone_from_slice(&v[..]);
+            Ok((ok(), value.release(env)).encode(env))
+        }
+        Ok(None) => Ok((undefined()).encode(env)),
+        Err(e) => Ok((error(), e.to_string()).encode(env)),
+    }
+}
+
+#[rustler::nif]
+fn snapshot_multi_get<'a>(env: Env<'a>, resource: Term, keys: Term<'a>) -> NifResult<Term<'a>> {
+    let terms: Vec<Term> = ::rustler::types::tuple::get_tuple(resource)?;
+    let resource: ResourceArc<SnapshotResource> = terms[2].decode()?;
+    let snap_guard = resource.lock();
+    let keys_iter: ListIterator = keys.decode()?;
+    let mut keys_list: Vec<String> = Vec::new();
+    for elem in keys_iter {
+        let k: String = elem.decode()?;
+        keys_list.push(k);
+    }
+    let values = snap_guard.multi_get(keys_list);
+    let mut result: Vec<Term> = Vec::new();
+    for v in values {
+        match v {
+            Ok(Some(item)) => {
+                let mut value = OwnedBinary::new(item[..].len()).unwrap();
+                value.clone_from_slice(&item[..]);
+                result.push((ok(), value.release(env)).encode(env))
+            }
+            Ok(None) => result.push((undefined()).encode(env)),
+            Err(e) => result.push((error(), e.to_string()).encode(env)),
+        }
+    }
+    Ok((ok(), result).encode(env))
+}
+
+#[rustler::nif]
+fn snapshot_multi_get_cf<'a>(env: Env<'a>, resource: Term, keys: Term<'a>) -> NifResult<Term<'a>> {
+    let terms: Vec<Term> = ::rustler::types::tuple::get_tuple(resource)?;
+    let db_resource: ResourceArc<DbResource> = terms[1].decode()?;
+    let snap_resource: ResourceArc<SnapshotResource> = terms[2].decode()?;
+    let db_guard = db_resource.read();
+    let snap_guard = snap_resource.lock();
+
+    let keys_iter: ListIterator = keys.decode()?;
+    let mut keys_list: Vec<(&ColumnFamily, Vec<u8>)> = Vec::new();
+    for elem in keys_iter {
+        let x = elem.decode()?;
+        let xs: Vec<Term> = ::rustler::types::tuple::get_tuple(x)?;
+        let cf_name: String = xs[0].decode()?;
+        let key: Binary = xs[1].decode()?;
+        let cf_handler = db_guard.cf_handle(&cf_name.as_ref());
+        keys_list.push((cf_handler.unwrap(), key.to_vec()))
+    }
+    let values = snap_guard.multi_get_cf(keys_list);
+    let mut result: Vec<Term> = Vec::new();
+    for v in values {
+        match v {
+            Ok(Some(item)) => {
+                let mut value = OwnedBinary::new(item[..].len()).unwrap();
+                value.clone_from_slice(&item[..]);
+                result.push((ok(), value.release(env)).encode(env))
+            }
+            Ok(None) => result.push((undefined()).encode(env)),
+            Err(e) => result.push((error(), e.to_string()).encode(env)),
+        }
+    }
+    Ok((ok(), result).encode(env))
+}
+
+#[rustler::nif]
+fn snapshot_iterator<'a>(
+    env: Env<'a>,
+    resource: Term,
+    mode: Term<'a>,
+) -> NifResult<Term<'a>> {
+    let terms: Vec<Term> = ::rustler::types::tuple::get_tuple(resource)?;
+    let snap_resource: ResourceArc<SnapshotResource> = terms[2].decode()?;
+    let snap_guard = snap_resource.lock();
+
+    let mut snap_iterator = snap_guard.iterator(IteratorMode::Start);
+    let mode_terms: Vec<Term> = ::rustler::types::tuple::get_tuple(mode)?;
+    if mode_terms.len() >= 1 {
+        let mode: String = mode_terms[0].atom_to_string()?;
+        match mode.as_str() {
+            "end" => snap_iterator = snap_guard.iterator(IteratorMode::End),
+            "from" => {
+                let from: Binary = mode_terms[1].decode()?;
+                if mode_terms.len() == 3 {
+                    let direction: String = mode_terms[2].atom_to_string()?;
+                    snap_iterator = match direction.as_str() {
+                        "reverse" => {
+                            snap_guard.iterator(IteratorMode::From(&from, Direction::Reverse))
+                        }
+                        _ => snap_guard.iterator(IteratorMode::From(&from, Direction::Forward)),
+                    }
+                } else {
+                    snap_iterator = snap_guard.iterator(IteratorMode::From(&from, Direction::Forward));
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let eternal_iter: DBIterator<'static> = unsafe { std::mem::transmute(snap_iterator) };
+    let resource = ResourceArc::new(IteratorResource {
+        iter: Mutex::new(eternal_iter),
+    });
+    Ok((ok(), resource.encode(env)).encode(env))
+}
+
+#[rustler::nif]
+fn snapshot_iterator_cf<'a>(
+    env: Env<'a>,
+    resource: Term,
+    cf_name: String,
+    mode: Term<'a>,
+) -> NifResult<Term<'a>> {
+    let terms: Vec<Term> = ::rustler::types::tuple::get_tuple(resource)?;
+    let db_resource: ResourceArc<DbResource> = terms[1].decode()?;
+    let snap_resource: ResourceArc<SnapshotResource> = terms[2].decode()?;
+    let db_guard = db_resource.read();
+    let snap_guard = snap_resource.lock();
+
+    match db_guard.cf_handle(&cf_name.as_ref()) {
+        None => Ok((error(), unknown_cf()).encode(env)),
+        Some(cf_handler) => {
+            let mut cf_iterator = snap_guard.iterator_cf(cf_handler, IteratorMode::Start);
+            let mode_terms: Vec<Term> = ::rustler::types::tuple::get_tuple(mode)?;
+            if mode_terms.len() >= 1 {
+                let mode: String = mode_terms[0].atom_to_string()?;
+                match mode.as_str() {
+                    "end" => cf_iterator = snap_guard.iterator_cf(cf_handler, IteratorMode::End),
+                    "from" => {
+                        let from: Binary = mode_terms[1].decode()?;
+                        if mode_terms.len() == 3 {
+                            let direction: String = mode_terms[2].atom_to_string()?;
+                            cf_iterator = match direction.as_str() {
+                                "reverse" => snap_guard.iterator_cf(
+                                    cf_handler,
+                                    IteratorMode::From(&from, Direction::Reverse),
+                                ),
+                                _ => snap_guard.iterator_cf(
+                                    cf_handler,
+                                    IteratorMode::From(&from, Direction::Forward),
+                                ),
+                            }
+                        } else {
+                            cf_iterator = snap_guard.iterator_cf(
+                                cf_handler,
+                                IteratorMode::From(&from, Direction::Forward),
+                            );
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            let eternal_iter: DBIterator<'static> = unsafe { std::mem::transmute(cf_iterator) };
+            let resource = ResourceArc::new(IteratorResource {
+                iter: Mutex::new(eternal_iter),
+            });
+            Ok((ok(), resource.encode(env)).encode(env))
+        }
+    }
 }
 
 // =================================================================================================

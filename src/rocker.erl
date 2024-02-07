@@ -34,7 +34,16 @@
     delete_range/3,
     delete_range_cf/4,
     multi_get/2,
-    multi_get_cf/2
+    multi_get_cf/2,
+    snapshot/1,
+    snapshot_get/2,
+    snapshot_get/3,
+    snapshot_get_cf/4,
+    snapshot_get_cf/3,
+    snapshot_multi_get/2,
+    snapshot_multi_get_cf/2,
+    snapshot_iterator/2,
+    snapshot_iterator_cf/3
 ]).
 
 %% Native library support
@@ -152,6 +161,43 @@ multi_get(_DbRef, _Keys) ->
     not_loaded(?LINE).
 
 multi_get_cf(_DbRef, _Keys) ->
+    not_loaded(?LINE).
+
+snapshot(_DbRef) ->
+    not_loaded(?LINE).
+
+snapshot_get(_SnapRef, _Key) ->
+    not_loaded(?LINE).
+
+snapshot_get(SnapRef, Key, Default) ->
+    case snapshot_get(SnapRef, Key) of
+        undefined ->
+            {ok, Default};
+        Some ->
+            Some
+    end.
+
+snapshot_get_cf(_SnapRef, _CfName, _Key) ->
+    not_loaded(?LINE).
+
+snapshot_get_cf(SnapRef, CfName, Key, Default) ->
+    case snapshot_get_cf(SnapRef, CfName, Key) of
+        undefined ->
+            {ok, Default};
+        Some ->
+            Some
+    end.
+
+snapshot_multi_get(_SnapRef, _Keys) ->
+    not_loaded(?LINE).
+
+snapshot_multi_get_cf(_SnapRef, _Keys) ->
+    not_loaded(?LINE).
+
+snapshot_iterator(_SnapRef, _Mode) ->
+    not_loaded(?LINE).
+
+snapshot_iterator_cf(_SnapRef, _CfName, _Mode) ->
     not_loaded(?LINE).
 
 %%==============================================================================

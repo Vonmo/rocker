@@ -5,5 +5,6 @@ rustler::atoms! {
     notfound,
     undefined,
     end_of_iterator,
-    unknown_cf
+    unknown_cf,
+    snap
 }

@@ -11,6 +11,7 @@ all() ->
     {group, atomic},
     {group, iterator},
     {group, cf},
+    {group, snapshot},
     {group, perf}
   ].
 
@@ -69,6 +70,17 @@ groups() ->
         write_batch_cf,
         delete_range_cf,
         multi_get_cf
+      ]},
+
+    {snapshot,
+      [parallel, shuffle],
+      [
+        create_snapshot,
+        snapshot_multi_get,
+        snapshot_get_cf,
+        snapshot_multi_get_cf,
+        snapshot_iterator,
+        snapshot_iterator_cf
       ]},
 
     {perf,
@@ -721,6 +733,197 @@ multi_get_cf(_) ->
     {Cf3, <<"k5">>}
   ]),
 
+  ok.
+
+%% =============================================================================
+%% group: snapshot
+%% =============================================================================
+create_snapshot(_) ->
+  Path = <<"/project/priv/db_create_snapshot">>,
+  rocker:destroy(Path),
+  {ok, Db} = rocker:open(Path),
+  {ok, 2} = rocker:tx(Db, [
+    {put, <<"k1">>, <<"v1">>},
+    {put, <<"k2">>, <<"v2">>}
+  ]),
+  {ok, {snap, _, SnapRef} = Snap} = rocker:snapshot(Db),
+  true = is_reference(SnapRef),
+  ok = rocker:put(Db, <<"k3">>, <<"v3">>),
+
+  {ok,<<"v1">>} = rocker:snapshot_get(Snap, <<"k1">>),
+  {ok,<<"v2">>} = rocker:snapshot_get(Snap, <<"k2">>),
+  undefined = rocker:snapshot_get(Snap, <<"k3">>),
+  {ok, <<"v3">>} = rocker:get(Db, <<"k3">>),
+  ok.
+
+snapshot_multi_get(_) ->
+  Path = <<"/project/priv/db_snapshot_multi_get">>,
+  rocker:destroy(Path),
+  {ok, Db} = rocker:open(Path),
+  {ok, 3} = rocker:tx(Db, [
+    {put, <<"k1">>, <<"v1">>},
+    {put, <<"k2">>, <<"v2">>},
+    {put, <<"k3">>, <<"v3">>}
+  ]),
+  {ok, Snap} = rocker:snapshot(Db),
+  ok = rocker:put(Db, <<"k4">>, <<"v4">>),
+
+  {ok, [
+    undefined,
+    {ok, <<"v1">>},
+    {ok, <<"v2">>},
+    {ok, <<"v3">>},
+    undefined,
+    undefined
+  ]} = rocker:snapshot_multi_get(Snap, [
+      <<"k0">>,
+      <<"k1">>,
+      <<"k2">>,
+      <<"k3">>,
+      <<"k4">>,
+      <<"k5">>
+  ]),
+  ok.
+
+snapshot_get_cf(_) ->
+  Path = <<"/project/priv/db_snapshot_get_cf">>,
+  rocker:destroy(Path),
+  Self = self(),
+  spawn(fun() ->
+    {ok, Db} = rocker:open(Path),
+    ok = rocker:create_cf(Db, <<"testcf">>),
+    Self ! ok
+  end),
+  receive
+    ok ->
+      {ok, Db} = rocker:open_cf(
+        Path, [<<"testcf">>]
+      ),
+      ok = rocker:put_cf(Db, <<"testcf">>, <<"key1">>, <<"value1">>),
+      {ok, Snap} = rocker:snapshot(Db),
+      ok = rocker:put_cf(Db, <<"testcf">>, <<"key2">>, <<"value2">>),
+
+      {ok, <<"value1">>} = rocker:get_cf(Db, <<"testcf">>, <<"key1">>),
+      {ok, <<"value2">>} = rocker:get_cf(Db, <<"testcf">>, <<"key2">>),
+
+      {ok, <<"value1">>} = rocker:snapshot_get_cf(Snap, <<"testcf">>, <<"key1">>),
+      undefined = rocker:snapshot_get_cf(Snap, <<"testcf">>, <<"key2">>)
+  end,
+  ok.
+
+snapshot_multi_get_cf(_) ->
+  Path = <<"/project/priv/db_multi_get_cf">>,
+  rocker:destroy(Path),
+  {ok, Db} = rocker:open(Path),
+  Cf1 = <<"test_cf1">>,
+  ok = rocker:create_cf(Db, Cf1),
+  Cf2 = <<"test_cf2">>,
+  ok = rocker:create_cf(Db, Cf2),
+  Cf3 = <<"test_cf3">>,
+  ok = rocker:create_cf(Db, Cf3),
+
+  {ok, 3} = rocker:tx(Db, [
+    {put_cf, Cf1, <<"k1">>, <<"v1">>},
+    {put_cf, Cf2, <<"k2">>, <<"v2">>},
+    {put_cf, Cf3, <<"k3">>, <<"v3">>}
+  ]),
+
+  {ok, Snap} = rocker:snapshot(Db),
+
+  {ok, 3} = rocker:tx(Db, [
+    {put_cf, Cf1, <<"k11">>, <<"v11">>},
+    {put_cf, Cf2, <<"k22">>, <<"v23">>},
+    {put_cf, Cf3, <<"k33">>, <<"v33">>}
+  ]),
+
+  {ok,[
+     {ok,<<"v1">>},
+     undefined,undefined,undefined,undefined,undefined,undefined,
+     {ok,<<"v2">>},
+     undefined,undefined,undefined,undefined,undefined,undefined,
+     {ok,<<"v3">>},
+     undefined,undefined,undefined
+  ]} = rocker:snapshot_multi_get_cf(Snap,[
+    {Cf1, <<"k1">>},
+    {Cf1, <<"k2">>},
+    {Cf1, <<"k3">>},
+    {Cf1, <<"k11">>},
+    {Cf1, <<"k22">>},
+    {Cf1, <<"k33">>},
+
+    {Cf2, <<"k1">>},
+    {Cf2, <<"k2">>},
+    {Cf2, <<"k3">>},
+    {Cf2, <<"k11">>},
+    {Cf2, <<"k22">>},
+    {Cf2, <<"k33">>},
+
+    {Cf3, <<"k1">>},
+    {Cf3, <<"k2">>},
+    {Cf3, <<"k3">>},
+    {Cf3, <<"k11">>},
+    {Cf3, <<"k22">>},
+    {Cf3, <<"k33">>}
+  ]),
+
+  ok.
+
+snapshot_iterator(_) ->
+  Path = <<"/project/priv/db_snapshot_iterator">>,
+  {ok, Db} = rocker:open(Path),
+  ok = rocker:put(Db, <<"k0">>, <<"v0">>),
+  {ok, Snap} = rocker:snapshot(Db),
+
+  {ok, StartRef} = rocker:snapshot_iterator(Snap, {'start'}),
+  true = is_reference(StartRef),
+
+  {ok, EndRef} = rocker:snapshot_iterator(Snap, {'end'}),
+  true = is_reference(EndRef),
+
+  {ok, FromRef1} = rocker:snapshot_iterator(Snap, {'from', <<"k0">>, forward}),
+  true = is_reference(FromRef1),
+
+  {ok, FromRef2} = rocker:snapshot_iterator(Snap, {'from', <<"k0">>, reverse}),
+  true = is_reference(FromRef2),
+
+  {ok, FromRef3} = rocker:snapshot_iterator(Snap, {'from', <<"k1">>, forward}),
+  true = is_reference(FromRef3),
+
+  {ok, FromRef4} = rocker:snapshot_iterator(Snap, {'from', <<"k1">>, reverse}),
+  true = is_reference(FromRef4),
+
+  {ok, <<"k0">>, _} = rocker:next(FromRef4),
+  ok.
+
+snapshot_iterator_cf(_) ->
+  Path = <<"/project/priv/db_snapshot_iterator_cf">>,
+  rocker:destroy(Path),
+  {ok, Db} = rocker:open(Path),
+  Cf = <<"test_cf">>,
+  ok = rocker:create_cf(Db, Cf),
+  ok = rocker:put_cf(Db, Cf, <<"k0">>, <<"v0">>),
+
+  {ok, Snap} = rocker:snapshot(Db),
+
+  {ok, StartRef} = rocker:snapshot_iterator_cf(Snap, Cf, {'start'}),
+  true = is_reference(StartRef),
+
+  {ok, EndRef} = rocker:snapshot_iterator_cf(Snap, Cf, {'end'}),
+  true = is_reference(EndRef),
+
+  {ok, FromRef1} = rocker:snapshot_iterator_cf(Snap, Cf, {'from', <<"k0">>, forward}),
+  true = is_reference(FromRef1),
+
+  {ok, FromRef2} = rocker:snapshot_iterator_cf(Snap, Cf, {'from', <<"k0">>, reverse}),
+  true = is_reference(FromRef2),
+
+  {ok, FromRef3} = rocker:snapshot_iterator_cf(Snap, Cf, {'from', <<"k1">>, forward}),
+  true = is_reference(FromRef3),
+
+  {ok, FromRef4} = rocker:snapshot_iterator_cf(Snap, Cf, {'from', <<"k1">>, reverse}),
+  true = is_reference(FromRef4),
+
+  {ok, <<"k0">>, _} = rocker:next(FromRef4),
   ok.
 
 %% =============================================================================
