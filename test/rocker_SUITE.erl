@@ -12,6 +12,7 @@ all() ->
     {group, iterator},
     {group, cf},
     {group, snapshot},
+    {group, checkpoint},
     {group, perf}
   ].
 
@@ -84,6 +85,12 @@ groups() ->
         snapshot_multi_get_cf,
         snapshot_iterator,
         snapshot_iterator_cf
+      ]},
+
+    {checkpoint,
+      [parallel, shuffle],
+      [
+        create_checkpoint
       ]},
 
     {perf,
@@ -958,6 +965,23 @@ snapshot_iterator_cf(_) ->
   true = is_reference(FromRef4),
 
   {ok, <<"k0">>, _} = rocker:next(FromRef4),
+  ok.
+
+%% =============================================================================
+%% group: checkpoint
+%% =============================================================================
+create_checkpoint(_) ->
+  Path = <<"/project/priv/db_create_checkpoint">>,
+  CpPath = <<"/project/priv/db_create_checkpoint_cp">>,
+  rocker:destroy(Path),
+  rocker:destroy(CpPath),
+
+  {ok, Db} = rocker:open(Path),
+  ok = rocker:put(Db, <<"k0">>, <<"v0">>),
+  ok = rocker:create_checkpoint(Db, CpPath),
+
+  {ok, BackupDb} = rocker:open(CpPath),
+  {ok,<<"v0">>} = rocker:get(BackupDb, <<"k0">>),
   ok.
 
 %% =============================================================================

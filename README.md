@@ -26,9 +26,14 @@ end
 ```
 
 ## Features
-* all basics db operations
+* all basics kv operations
 * column families support
 * transactions support
+* support of flexible storage setup
+* delete range
+* multi get
+* snapshots
+* checkpoints (Online backups)
 
 ## Main requirements for a driver
 * Reliability
@@ -36,12 +41,7 @@ end
 * Minimal codebase
 * Safety
 * Functionality
-* All the main kv-functions
-* Column families
-* Transactions
-* Data compression
-* Support of flexible storage setup
-* Delete Range
+
 
 ## API
 ### Open database
@@ -164,7 +164,6 @@ In a set of tests you can find a performance test. It demonstrates about 135k wr
 
 ## Status
 Passed all the functional and performance tests.
-Ready for real projects.
 
 ## Versioning
 The release version follows the RocksDB's one.

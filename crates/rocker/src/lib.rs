@@ -46,6 +46,7 @@ rustler::init!(
         nif::snapshot_multi_get_cf,
         nif::snapshot_iterator,
         nif::snapshot_iterator_cf,
+        nif::create_checkpoint,
     ],
     load = nif::on_load
 );

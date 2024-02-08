@@ -46,7 +46,8 @@
     snapshot_multi_get/2,
     snapshot_multi_get_cf/2,
     snapshot_iterator/2,
-    snapshot_iterator_cf/3
+    snapshot_iterator_cf/3,
+    create_checkpoint/2
 ]).
 
 %% Native library support
@@ -210,6 +211,9 @@ snapshot_iterator(_SnapRef, _Mode) ->
     not_loaded(?LINE).
 
 snapshot_iterator_cf(_SnapRef, _CfName, _Mode) ->
+    not_loaded(?LINE).
+
+create_checkpoint(_DbRef, _Path) ->
     not_loaded(?LINE).
 
 %%==============================================================================

@@ -1,7 +1,8 @@
 use atoms::{end_of_iterator, error, ok, snap, undefined, unknown_cf, vsn1};
 use options::RockerOptions;
 use rocksdb::{
-    ColumnFamily, DBIterator, Direction, IteratorMode, Options, Snapshot, WriteBatch, DB,
+    checkpoint::Checkpoint, ColumnFamily, DBIterator, Direction, IteratorMode, Options, Snapshot,
+    WriteBatch, DB,
 };
 use rustler::resource::ResourceArc;
 use rustler::types::list::ListIterator;
@@ -796,6 +797,17 @@ fn snapshot_iterator_cf<'a>(
             });
             Ok((ok(), resource.encode(env)).encode(env))
         }
+    }
+}
+
+#[rustler::nif(schedule = "DirtyIo")]
+fn create_checkpoint(env: Env, resource: ResourceArc<DbResource>, path: String) -> NifResult<Term> {
+    let db_guard = resource.write();
+    let cp = Checkpoint::new(&db_guard).unwrap();
+    let cp_path = std::path::Path::new(path.as_str());
+    match cp.create_checkpoint(&cp_path) {
+        Ok(_) => Ok((ok()).encode(env)),
+        Err(e) => Ok((error(), e.to_string()).encode(env)),
     }
 }
 
