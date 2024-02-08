@@ -6,6 +6,8 @@
     latest_sequence_number/1,
     open/2,
     open/1,
+    open_for_read_only/2,
+    open_for_read_only/1,
     destroy/2,
     destroy/1,
     repair/2,
@@ -23,6 +25,8 @@
     create_cf/3,
     open_cf/2,
     open_cf/3,
+    open_cf_for_read_only/3,
+    open_cf_for_read_only/2,
     list_cf/2,
     list_cf/1,
     drop_cf/2,
@@ -69,6 +73,12 @@ open(_Path, _Options) ->
 
 open(Path) ->
     open(Path, #{}).
+
+open_for_read_only(_Path, _Options) ->
+    not_loaded(?LINE).
+
+open_for_read_only(Path) ->
+    open_for_read_only(Path, #{}).
 
 destroy(_Path, _Options) ->
     not_loaded(?LINE).
@@ -125,6 +135,12 @@ open_cf(_Path, _CfNames, _Options) ->
 
 open_cf(Path, CfNames) ->
     open_cf(Path, CfNames, #{}).
+
+open_cf_for_read_only(_Path, _CfNames, _Options) ->
+    not_loaded(?LINE).
+
+open_cf_for_read_only(Path, CfNames) ->
+    open_cf_for_read_only(Path, CfNames, #{}).
 
 list_cf(_Path, _Options) ->
     not_loaded(?LINE).

@@ -95,6 +95,16 @@ fn open(env: Env, path: String, opts: RockerOptions) -> NifResult<Term> {
     }
 }
 
+#[rustler::nif]
+fn open_for_read_only(env: Env, path: String, opts: RockerOptions) -> NifResult<Term> {
+    let db_opts = Options::from(opts);
+    let error_if_log_file_exist = false;
+    match DB::open_for_read_only(&db_opts, path, error_if_log_file_exist) {
+        Ok(db) => Ok((ok(), ResourceArc::new(DbResource::from(db))).encode(env)),
+        Err(e) => Ok((error(), e.to_string()).encode(env)),
+    }
+}
+
 #[rustler::nif(schedule = "DirtyIo")]
 fn destroy(env: Env, path: String, opts: RockerOptions) -> NifResult<Term> {
     let db_opts = Options::from(opts);
@@ -314,8 +324,28 @@ fn open_cf<'a>(
         let name: String = elem.decode()?;
         cfs.push(name);
     }
-
     match DB::open_cf(&db_opts, path, &cfs) {
+        Ok(db) => Ok((ok(), ResourceArc::new(DbResource::from(db))).encode(env)),
+        Err(e) => Ok((error(), e.to_string()).encode(env)),
+    }
+}
+
+#[rustler::nif]
+fn open_cf_for_read_only<'a>(
+    env: Env<'a>,
+    path: String,
+    cf_names: Term<'a>,
+    opts: RockerOptions,
+) -> NifResult<Term<'a>> {
+    let db_opts = Options::from(opts);
+    let cf_names_iter: ListIterator = cf_names.decode()?;
+    let mut cfs: Vec<String> = Vec::new();
+    for elem in cf_names_iter {
+        let name: String = elem.decode()?;
+        cfs.push(name);
+    }
+    let error_if_log_file_exist = false;
+    match DB::open_cf_for_read_only(&db_opts, path, &cfs, error_if_log_file_exist) {
         Ok(db) => Ok((ok(), ResourceArc::new(DbResource::from(db))).encode(env)),
         Err(e) => Ok((error(), e.to_string()).encode(env)),
     }

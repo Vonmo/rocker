@@ -25,6 +25,7 @@ groups() ->
         open,
         open_default,
         open_multi_ptr,
+        open_for_read_only,
         destroy,
         repair,
         get_db_path,
@@ -59,6 +60,7 @@ groups() ->
       [
         create_default,
         open_cf_default,
+        open_cf_for_read_only,
         list_cf,
         drop_cf,
         put_cf_get_cf,
@@ -161,6 +163,23 @@ open_multi_ptr(_) ->
   true = is_reference(Db2),
   {ok, Db3} = rocker:open(<<"/project/priv/db_default_path3">>),
   true = is_reference(Db3),
+  ok.
+
+open_for_read_only(_) ->
+  Path = <<"/project/priv/db_open_for_read_only">>,
+  Test = self(),
+  spawn(fun() ->
+    {ok, Db} = rocker:open(Path),
+    ok = rocker:put(Db, <<"k1">>, <<"v1">>),
+    Test ! ok
+  end),
+  receive
+    ok ->
+      {ok, DbRead} = rocker:open_for_read_only(<<"/project/priv/db_open_for_read_only">>),
+      {ok, <<"v1">>} = rocker:get(DbRead, <<"k1">>),
+      {error,<<"Not implemented: Not supported operation in read only mode.">>}
+        = rocker:put(DbRead, <<"k2">>, <<"v2">>)
+  end,
   ok.
 
 destroy(_) ->
@@ -444,6 +463,26 @@ open_cf_default(_) ->
   end,
   ok.
 
+open_cf_for_read_only(_) ->
+  Path = <<"/project/priv/db_open_cf_for_read_only">>,
+  rocker:destroy(Path),
+  Self = self(),
+  spawn(fun() ->
+    {ok, Db} = rocker:open(Path),
+    ok = rocker:create_cf(Db, <<"testcf">>),
+    ok = rocker:put_cf(Db, <<"testcf">>, <<"k1">>, <<"v1">>),
+    Self ! ok
+  end),
+  receive
+    ok ->
+      {ok, Db} = rocker:open_cf_for_read_only(
+        Path, [<<"testcf">>]
+      ),
+      {ok, <<"v1">>} = rocker:get_cf(Db, <<"testcf">>, <<"k1">>),
+      {error,<<"Not implemented: Not supported operation in read only mode.">>}
+        = rocker:put_cf(Db, <<"testcf">>, <<"k1">>, <<"v1">>)
+  end,
+  ok.
 
 list_cf(_) ->
   Path = <<"/project/priv/db_list_cf">>,
