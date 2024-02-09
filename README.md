@@ -26,14 +26,15 @@ end
 ```
 
 ## Features
-* all basics kv operations
+* kv operations
 * column families support
-* transactions support
+* batch write
 * support of flexible storage setup
 * delete range
 * multi get
 * snapshots
 * checkpoints (Online backups)
+* backup api
 
 ## Main requirements for a driver
 * Reliability

@@ -1,8 +1,9 @@
-use atoms::{end_of_iterator, error, ok, snap, undefined, unknown_cf, vsn1};
+use atoms::{backup, end_of_iterator, error, ok, snap, undefined, unknown_cf, vsn1};
 use options::RockerOptions;
 use rocksdb::{
-    checkpoint::Checkpoint, ColumnFamily, DBIterator, Direction, IteratorMode, Options, Snapshot,
-    WriteBatch, DB,
+    backup::{BackupEngine, BackupEngineOptions, RestoreOptions},
+    checkpoint::Checkpoint,
+    ColumnFamily, DBIterator, Direction, IteratorMode, Options, Snapshot, WriteBatch, DB,
 };
 use rustler::resource::ResourceArc;
 use rustler::types::list::ListIterator;
@@ -836,6 +837,95 @@ fn create_checkpoint(env: Env, resource: ResourceArc<DbResource>, path: String) 
     let cp = Checkpoint::new(&db_guard).unwrap();
     let cp_path = std::path::Path::new(path.as_str());
     match cp.create_checkpoint(&cp_path) {
+        Ok(_) => Ok((ok()).encode(env)),
+        Err(e) => Ok((error(), e.to_string()).encode(env)),
+    }
+}
+
+#[rustler::nif(schedule = "DirtyIo")]
+fn create_backup(env: Env, resource: ResourceArc<DbResource>, path: String) -> NifResult<Term> {
+    let db_guard = resource.read();
+    let rdb_env = rocksdb::Env::new().unwrap();
+    let backup_path = std::path::Path::new(path.as_str());
+    let backup_opts = BackupEngineOptions::new(&backup_path).unwrap();
+    let mut backup_engine = BackupEngine::open(&backup_opts, &rdb_env).unwrap();
+
+    match backup_engine.create_new_backup(&db_guard) {
+        Ok(_) => {
+            let info = backup_engine.get_backup_info();
+            let mut result: Vec<Term> = Vec::new();
+            info.iter().for_each(|i| {
+                result.push((backup(), i.backup_id, i.timestamp, i.size, i.num_files).encode(env))
+            });
+            Ok((ok(), result).encode(env))
+        }
+        Err(e) => Ok((error(), e.to_string()).encode(env)),
+    }
+}
+
+#[rustler::nif(schedule = "DirtyIo")]
+fn get_backup_info(env: Env, path: String) -> NifResult<Term> {
+    let rdb_env = rocksdb::Env::new().unwrap();
+    let backup_path = std::path::Path::new(path.as_str());
+    let backup_opts = BackupEngineOptions::new(&backup_path).unwrap();
+    let backup_engine = BackupEngine::open(&backup_opts, &rdb_env).unwrap();
+    let info = backup_engine.get_backup_info();
+    let mut result: Vec<Term> = Vec::new();
+    info.iter().for_each(|i| {
+        result.push((backup(), i.backup_id, i.timestamp, i.size, i.num_files).encode(env))
+    });
+    Ok((ok(), result).encode(env))
+}
+
+#[rustler::nif(schedule = "DirtyIo")]
+fn purge_old_backups(env: Env, path: String, num_backups_to_keep: usize) -> NifResult<Term> {
+    let rdb_env = rocksdb::Env::new().unwrap();
+    let backup_path = std::path::Path::new(path.as_str());
+    let backup_opts = BackupEngineOptions::new(&backup_path).unwrap();
+    let mut backup_engine = BackupEngine::open(&backup_opts, &rdb_env).unwrap();
+
+    match backup_engine.purge_old_backups(num_backups_to_keep) {
+        Ok(_) => {
+            let info = backup_engine.get_backup_info();
+            let mut result: Vec<Term> = Vec::new();
+            info.iter().for_each(|i| {
+                result.push((backup(), i.backup_id, i.timestamp, i.size, i.num_files).encode(env))
+            });
+            Ok((ok(), result).encode(env))
+        }
+        Err(e) => Ok((error(), e.to_string()).encode(env)),
+    }
+}
+
+#[rustler::nif(schedule = "DirtyIo")]
+fn restore_from_backup(
+    env: Env,
+    backup_path: String,
+    restore_path: String,
+    backup_id: i32,
+) -> NifResult<Term> {
+    let rdb_env = rocksdb::Env::new().unwrap();
+    let backup_path = std::path::Path::new(backup_path.as_str());
+    let restore_path = std::path::Path::new(restore_path.as_str());
+    let backup_opts = BackupEngineOptions::new(&backup_path).unwrap();
+    let mut backup_engine = BackupEngine::open(&backup_opts, &rdb_env).unwrap();
+    let mut restore_option = RestoreOptions::default();
+    restore_option.set_keep_log_files(false); // true to keep log files
+
+    let res = match backup_id {
+        -1 => {
+            backup_engine.restore_from_latest_backup(&restore_path, &restore_path, &restore_option)
+        }
+
+        _ => backup_engine.restore_from_backup(
+            &restore_path,
+            &restore_path,
+            &restore_option,
+            backup_id as u32,
+        ),
+    };
+
+    match res {
         Ok(_) => Ok((ok()).encode(env)),
         Err(e) => Ok((error(), e.to_string()).encode(env)),
     }

@@ -13,6 +13,7 @@ all() ->
     {group, cf},
     {group, snapshot},
     {group, checkpoint},
+    {group, backup},
     {group, perf}
   ].
 
@@ -93,6 +94,15 @@ groups() ->
       [parallel, shuffle],
       [
         create_checkpoint
+      ]},
+
+    {backup,
+      [parallel, shuffle],
+      [
+        create_backup,
+        purge_old_backups,
+        restore_latest_backup,
+        restore_backup
       ]},
 
     {perf,
@@ -1021,6 +1031,90 @@ create_checkpoint(_) ->
 
   {ok, BackupDb} = rocker:open(CpPath),
   {ok,<<"v0">>} = rocker:get(BackupDb, <<"k0">>),
+  ok.
+
+%% =============================================================================
+%% group: backup
+%% =============================================================================
+create_backup(_) ->
+  Path = <<"/project/priv/db_create_backup">>,
+  BackupPath = <<"/project/priv/db_create_backup_dist">>,
+  rocker:destroy(Path),
+  os:cmd("rm -rf /project/priv/db_create_backup_dist"),
+
+  {ok, Db} = rocker:open(Path),
+  ok = rocker:put(Db, <<"k0">>, <<"v0">>),
+
+  {ok,[{backup,1,_,_,_}]} = rocker:create_backup(Db, BackupPath),
+  {ok,[{backup,1,_,_,_},{backup,2,_,_,_}]} = rocker:create_backup(Db, BackupPath),
+
+  {ok,[{backup,1,_,_,_},{backup,2,_,_,_}]} = rocker:get_backup_info(BackupPath),
+  ok.
+
+purge_old_backups(_) ->
+  Path = <<"/project/priv/db_purge_old_backups">>,
+  BackupPath = <<"/project/priv/db_purge_old_backups_dist">>,
+  rocker:destroy(Path),
+  os:cmd("rm -rf /project/priv/db_purge_old_backups_dist"),
+
+  {ok, Db} = rocker:open(Path),
+  ok = rocker:put(Db, <<"k0">>, <<"v0">>),
+
+  {ok,[{backup,1,_,_,_}]} = rocker:create_backup(Db, BackupPath),
+  {ok,[{backup,1,_,_,_},{backup,2,_,_,_}]} = rocker:create_backup(Db, BackupPath),
+  {ok,[{backup,1,_,_,_},{backup,2,_,_,_},{backup,3,_,_,_}]} = rocker:create_backup(Db, BackupPath),
+  {ok,[{backup,1,_,_,_},{backup,2,_,_,_},
+       {backup,3,_,_,_},{backup,4,_,_,_}]} = rocker:create_backup(Db, BackupPath),
+
+  {ok,[{backup,3,_,_,_},{backup,4,_,_,_}]}
+    = rocker:purge_old_backups(BackupPath, 2),
+
+  ok.
+
+restore_latest_backup(_) ->
+  Path = <<"/project/priv/db_restore_latest_backup">>,
+  BackupPath = <<"/project/priv/db_restore_latest_backup_dist">>,
+  RestorePath = <<"/project/priv/db_restore_latest_backup_rest">>,
+  rocker:destroy(Path),
+  rocker:destroy(RestorePath),
+  os:cmd("rm -rf /project/priv/db_restore_latest_backup_dist"),
+  os:cmd("rm -rf /project/priv/db_restore_latest_backup_rest"),
+
+  {ok, Db} = rocker:open(Path),
+  ok = rocker:put(Db, <<"k0">>, <<"v0">>),
+
+  {ok,[{backup,1,_,_,_}]} = rocker:create_backup(Db, BackupPath),
+  ok = rocker:put(Db, <<"k0">>, <<"v1">>),
+  {ok,[{backup,1,_,_,_},{backup,2,_,_,_}]} = rocker:create_backup(Db, BackupPath),
+
+  ok = rocker:restore_from_backup(BackupPath, RestorePath),
+
+  {ok, Restored} = rocker:open(RestorePath),
+  {ok,<<"v1">>} = rocker:get(Restored, <<"k0">>),
+  ok.
+
+restore_backup(_) ->
+  Path = <<"/project/priv/db_restore_backup">>,
+  BackupPath = <<"/project/priv/db_restore_backup_dist">>,
+  RestorePath = <<"/project/priv/db_restore_backup_rest">>,
+  rocker:destroy(Path),
+  rocker:destroy(RestorePath),
+  os:cmd("rm -rf /project/priv/db_restore_backup_dist"),
+  os:cmd("rm -rf /project/priv/db_restore_backup_rest"),
+
+  {ok, Db} = rocker:open(Path),
+  ok = rocker:put(Db, <<"k0">>, <<"v0">>),
+
+  {ok,[{backup,1,_,_,_}]} = rocker:create_backup(Db, BackupPath),
+  ok = rocker:put(Db, <<"k0">>, <<"v1">>),
+  {ok,[{backup,1,_,_,_},{backup,2,_,_,_}]} = rocker:create_backup(Db, BackupPath),
+  ok = rocker:put(Db, <<"k0">>, <<"v2">>),
+  {ok,[{backup,1,_,_,_},{backup,2,_,_,_},{backup,3,_,_,_}]} = rocker:create_backup(Db, BackupPath),
+
+  ok = rocker:restore_from_backup(BackupPath, RestorePath, 2),
+
+  {ok, Restored} = rocker:open(RestorePath),
+  {ok,<<"v1">>} = rocker:get(Restored, <<"k0">>),
   ok.
 
 %% =============================================================================

@@ -51,7 +51,12 @@
     snapshot_multi_get_cf/2,
     snapshot_iterator/2,
     snapshot_iterator_cf/3,
-    create_checkpoint/2
+    create_checkpoint/2,
+    create_backup/2,
+    get_backup_info/1,
+    purge_old_backups/2,
+    restore_from_backup/3,
+    restore_from_backup/2
 ]).
 
 %% Native library support
@@ -231,6 +236,21 @@ snapshot_iterator_cf(_SnapRef, _CfName, _Mode) ->
 
 create_checkpoint(_DbRef, _Path) ->
     not_loaded(?LINE).
+
+create_backup(_DbRef, _Path) ->
+    not_loaded(?LINE).
+
+get_backup_info(_BackupPath) ->
+    not_loaded(?LINE).
+
+purge_old_backups(_BackupPath, _NumBackupsToKeep) ->
+    not_loaded(?LINE).
+
+restore_from_backup(_BackupPath, _RestorePath, _BackupId) ->
+    not_loaded(?LINE).
+
+restore_from_backup(BackupPath, RestorePath) ->
+    restore_from_backup(BackupPath, RestorePath, -1).
 
 %%==============================================================================
 %% helpers

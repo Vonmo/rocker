@@ -49,6 +49,10 @@ rustler::init!(
         nif::snapshot_iterator,
         nif::snapshot_iterator_cf,
         nif::create_checkpoint,
+        nif::create_backup,
+        nif::get_backup_info,
+        nif::purge_old_backups,
+        nif::restore_from_backup,
     ],
     load = nif::on_load
 );
