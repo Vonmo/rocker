@@ -19,7 +19,7 @@ ifeq (env.mk,$(wildcard env.mk))
 	include env.mk
 endif
 
-.PHONY: deps
+.PHONY: deps tests
 
 all: $(REBAR) compile
 

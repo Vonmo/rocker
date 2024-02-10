@@ -5,7 +5,7 @@ services:
     build: imgs/base
 
   test:
-    image: rocker_base:latest
+    image: vonmo-rocker-rocker-base:latest
     depends_on:
       - base
     volumes:
