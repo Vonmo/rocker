@@ -19,6 +19,8 @@
     delete/2,
     tx/2,
     iterator/2,
+    iterator_range/5,
+    iterator_range/4,
     next/1,
     prefix_iterator/2,
     create_cf/2,
@@ -122,6 +124,12 @@ tx(_DbRef, _Txs) ->
 
 iterator(_DbRef, _Mode) ->
     not_loaded(?LINE).
+
+iterator_range(_DbRef, _Mode, _From, _To, _ReadOptions) ->
+    not_loaded(?LINE).
+
+iterator_range(DbRef, Mode, From, To) ->
+    iterator_range(DbRef, Mode, From, To, #{}).
 
 next(_IterRef) ->
     not_loaded(?LINE).

@@ -30,6 +30,7 @@ end
 * column families support
 * batch write
 * support of flexible storage setup
+* range iterator
 * delete range
 * multi get
 * snapshots

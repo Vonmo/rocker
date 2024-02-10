@@ -53,7 +53,14 @@ groups() ->
         next_end,
         next_from_forward,
         next_from_reverse,
-        prefix_iterator
+        prefix_iterator,
+        iterator_range_start,
+        iterator_range_end,
+        iterator_range_from,
+        iterator_range_from_reverse,
+        iterator_range_undefined_left_border,
+        iterator_range_undefined_right_border,
+        iterator_range_undefined_both_borders
       ]},
 
     {cf,
@@ -440,6 +447,145 @@ prefix_iterator(_) ->
   true = is_reference(Iter2),
   {ok, <<"bbb1">>, <<"vb1">>} = rocker:next(Iter2),
   end_of_iterator = rocker:next(Iter2),
+  ok.
+
+iterator_range_start(_) ->
+  Path = <<"/project/priv/db_create_iterator_range">>,
+  rocker:destroy(Path),
+  {ok, Db} = rocker:open(Path),
+  {ok, 5} = rocker:tx(Db, [
+    {put, <<"k1">>, <<"v1">>},
+    {put, <<"k2">>, <<"v2">>},
+    {put, <<"k3">>, <<"v3">>},
+    {put, <<"k4">>, <<"v4">>},
+    {put, <<"k5">>, <<"v5">>}
+  ]),
+  {ok, Iter} = rocker:iterator_range(Db, {'start'}, <<"k2">>, <<"k4">>),
+  true = is_reference(Iter),
+
+  {ok,<<"k2">>,<<"v2">>} = rocker:next(Iter),
+  {ok,<<"k3">>,<<"v3">>} = rocker:next(Iter),
+  end_of_iterator = rocker:next(Iter),
+  ok.
+
+iterator_range_end(_) ->
+  Path = <<"/project/priv/db_iterator_range_end">>,
+  rocker:destroy(Path),
+  {ok, Db} = rocker:open(Path),
+  {ok, 5} = rocker:tx(Db, [
+    {put, <<"k1">>, <<"v1">>},
+    {put, <<"k2">>, <<"v2">>},
+    {put, <<"k3">>, <<"v3">>},
+    {put, <<"k4">>, <<"v4">>},
+    {put, <<"k5">>, <<"v5">>}
+  ]),
+  {ok, Iter} = rocker:iterator_range(Db, {'end'}, <<"k2">>, <<"k4">>),
+  true = is_reference(Iter),
+
+  {ok,<<"k3">>,<<"v3">>} = rocker:next(Iter),
+  {ok,<<"k2">>,<<"v2">>} = rocker:next(Iter),
+  end_of_iterator = rocker:next(Iter),
+  ok.
+
+iterator_range_from(_) ->
+  Path = <<"/project/priv/db_iterator_range_from">>,
+  rocker:destroy(Path),
+  {ok, Db} = rocker:open(Path),
+  {ok, 5} = rocker:tx(Db, [
+    {put, <<"k1">>, <<"v1">>},
+    {put, <<"k2">>, <<"v2">>},
+    {put, <<"k3">>, <<"v3">>},
+    {put, <<"k4">>, <<"v4">>},
+    {put, <<"k5">>, <<"v5">>}
+  ]),
+  {ok, Iter} = rocker:iterator_range(Db, {'from', <<"k3">>, forward}, <<"k2">>, <<"k5">>),
+  true = is_reference(Iter),
+
+  {ok,<<"k3">>,<<"v3">>} = rocker:next(Iter),
+  {ok,<<"k4">>,<<"v4">>} = rocker:next(Iter),
+  end_of_iterator = rocker:next(Iter),
+  ok.
+
+iterator_range_from_reverse(_) ->
+  Path = <<"/project/priv/db_iterator_range_from_reverse">>,
+  rocker:destroy(Path),
+  {ok, Db} = rocker:open(Path),
+  {ok, 5} = rocker:tx(Db, [
+    {put, <<"k1">>, <<"v1">>},
+    {put, <<"k2">>, <<"v2">>},
+    {put, <<"k3">>, <<"v3">>},
+    {put, <<"k4">>, <<"v4">>},
+    {put, <<"k5">>, <<"v5">>}
+  ]),
+  {ok, Iter} = rocker:iterator_range(Db, {'from', <<"k3">>, reverse}, <<"k2">>, <<"k5">>),
+  true = is_reference(Iter),
+
+  {ok,<<"k3">>,<<"v3">>} = rocker:next(Iter),
+  {ok,<<"k2">>,<<"v2">>} = rocker:next(Iter),
+  end_of_iterator = rocker:next(Iter),
+  ok.
+
+iterator_range_undefined_left_border(_) ->
+  Path = <<"/project/priv/db_iterator_range_undefined_left_border">>,
+  rocker:destroy(Path),
+  {ok, Db} = rocker:open(Path),
+  {ok, 5} = rocker:tx(Db, [
+    {put, <<"k1">>, <<"v1">>},
+    {put, <<"k2">>, <<"v2">>},
+    {put, <<"k3">>, <<"v3">>},
+    {put, <<"k4">>, <<"v4">>},
+    {put, <<"k5">>, <<"v5">>}
+  ]),
+  {ok, Iter} = rocker:iterator_range(Db, {'start'}, undefined, <<"k4">>),
+  true = is_reference(Iter),
+
+  {ok,<<"k1">>,<<"v1">>} = rocker:next(Iter),
+  {ok,<<"k2">>,<<"v2">>} = rocker:next(Iter),
+  {ok,<<"k3">>,<<"v3">>} = rocker:next(Iter),
+  end_of_iterator = rocker:next(Iter),
+  ok.
+
+iterator_range_undefined_right_border(_) ->
+  Path = <<"/project/priv/db_iterator_range_undefined_right_border">>,
+  rocker:destroy(Path),
+  {ok, Db} = rocker:open(Path),
+  {ok, 5} = rocker:tx(Db, [
+    {put, <<"k1">>, <<"v1">>},
+    {put, <<"k2">>, <<"v2">>},
+    {put, <<"k3">>, <<"v3">>},
+    {put, <<"k4">>, <<"v4">>},
+    {put, <<"k5">>, <<"v5">>}
+  ]),
+  {ok, Iter} = rocker:iterator_range(Db, {'start'}, <<"k2">>, undefined),
+  true = is_reference(Iter),
+
+  {ok,<<"k2">>,<<"v2">>} = rocker:next(Iter),
+  {ok,<<"k3">>,<<"v3">>} = rocker:next(Iter),
+  {ok,<<"k4">>,<<"v4">>} = rocker:next(Iter),
+  {ok,<<"k5">>,<<"v5">>} = rocker:next(Iter),
+  end_of_iterator = rocker:next(Iter),
+  ok.
+
+iterator_range_undefined_both_borders(_) ->
+  Path = <<"/project/priv/db_iterator_range_undefined_both_borders">>,
+  rocker:destroy(Path),
+  {ok, Db} = rocker:open(Path),
+  {ok, 5} = rocker:tx(Db, [
+    {put, <<"k1">>, <<"v1">>},
+    {put, <<"k2">>, <<"v2">>},
+    {put, <<"k3">>, <<"v3">>},
+    {put, <<"k4">>, <<"v4">>},
+    {put, <<"k5">>, <<"v5">>}
+  ]),
+  {ok, Iter} = rocker:iterator_range(Db, {'start'}, undefined, undefined),
+  true = is_reference(Iter),
+
+  {ok,<<"k1">>,<<"v1">>} = rocker:next(Iter),
+  {ok,<<"k2">>,<<"v2">>} = rocker:next(Iter),
+  {ok,<<"k3">>,<<"v3">>} = rocker:next(Iter),
+  {ok,<<"k4">>,<<"v4">>} = rocker:next(Iter),
+  {ok,<<"k5">>,<<"v5">>} = rocker:next(Iter),
+  end_of_iterator = rocker:next(Iter),
   ok.
 
 %% =============================================================================

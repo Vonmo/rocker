@@ -7,6 +7,7 @@ extern crate serde;
 mod atoms;
 mod nif;
 mod options;
+mod read_options;
 
 rustler::init!(
     "rocker",
@@ -23,6 +24,7 @@ rustler::init!(
         nif::delete,
         nif::tx,
         nif::iterator,
+        nif::iterator_range,
         nif::next,
         nif::prefix_iterator,
         nif::create_cf,

@@ -1,11 +1,14 @@
 use atoms::{backup, end_of_iterator, error, ok, snap, undefined, unknown_cf, vsn1};
 use options::RockerOptions;
+use read_options::RockerReadOptions;
 use rocksdb::{
     backup::{BackupEngine, BackupEngineOptions, RestoreOptions},
     checkpoint::Checkpoint,
-    ColumnFamily, DBIterator, Direction, IteratorMode, Options, Snapshot, WriteBatch, DB,
+    ColumnFamily, DBIterator, Direction, IteratorMode, Options, ReadOptions, Snapshot, WriteBatch,
+    DB,
 };
 use rustler::resource::ResourceArc;
+use rustler::types::atom::Atom;
 use rustler::types::list::ListIterator;
 use rustler::{Binary, Encoder, Env, NifResult, OwnedBinary, Term};
 use std::sync::{Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
@@ -256,6 +259,81 @@ fn iterator<'a>(
     }
 
     let eternal_iter: DBIterator<'static> = unsafe { std::mem::transmute(iterator) };
+    let resource = ResourceArc::new(IteratorResource {
+        iter: Mutex::new(eternal_iter),
+    });
+    Ok((ok(), resource.encode(env)).encode(env))
+}
+
+#[rustler::nif]
+fn iterator_range<'a>(
+    env: Env<'a>,
+    resource: ResourceArc<DbResource>,
+    mode: Term<'a>,
+    from: Term<'a>,
+    to: Term<'a>,
+    read_opts: RockerReadOptions,
+) -> NifResult<Term<'a>> {
+    let mut read_opts = ReadOptions::from(read_opts);
+    let from_mode = match Atom::from_term(from) {
+        Ok(_) => "open".to_string(),
+        Err(_) => "key".to_string(),
+    };
+    let to_mode = match Atom::from_term(to) {
+        Ok(_) => "open".to_string(),
+        Err(_) => "key".to_string(),
+    };
+    match (from_mode.as_str(), to_mode.as_str()) {
+        ("key", "key") => {
+            let from: Binary = from.decode()?;
+            let to: Binary = to.decode()?;
+            read_opts.set_iterate_range(from.as_slice()..to.as_slice())
+        }
+        (_, "key") => {
+            let to: Binary = to.decode()?;
+            read_opts.set_iterate_range(..to.as_slice())
+        }
+        ("key", _) => {
+            let from: Binary = from.decode()?;
+            read_opts.set_iterate_range(from.as_slice()..)
+        }
+        _ => read_opts.set_iterate_range(..),
+    };
+
+    let db_guard = resource.read();
+    let mode_terms: Vec<Term> = ::rustler::types::tuple::get_tuple(mode)?;
+    let iter = if mode_terms.len() >= 1 {
+        let mode: String = mode_terms[0].atom_to_string()?;
+        match mode.as_str() {
+            "end" => db_guard.iterator_opt(IteratorMode::End, read_opts),
+            "from" => {
+                let mode_from: Binary = mode_terms[1].decode()?;
+                if mode_terms.len() == 3 {
+                    let direction: String = mode_terms[2].atom_to_string()?;
+                    match direction.as_str() {
+                        "reverse" => db_guard.iterator_opt(
+                            IteratorMode::From(&mode_from, Direction::Reverse),
+                            read_opts,
+                        ),
+                        _ => db_guard.iterator_opt(
+                            IteratorMode::From(&mode_from, Direction::Forward),
+                            read_opts,
+                        ),
+                    }
+                } else {
+                    db_guard.iterator_opt(
+                        IteratorMode::From(&mode_from, Direction::Forward),
+                        read_opts,
+                    )
+                }
+            }
+            _ => db_guard.iterator_opt(IteratorMode::Start, read_opts),
+        }
+    } else {
+        db_guard.iterator_opt(IteratorMode::Start, read_opts)
+    };
+
+    let eternal_iter: DBIterator<'static> = unsafe { std::mem::transmute(iter) };
     let resource = ResourceArc::new(IteratorResource {
         iter: Mutex::new(eternal_iter),
     });
