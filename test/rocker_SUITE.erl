@@ -284,7 +284,7 @@ write_batch(_) ->
   Path = <<"/project/priv/db_bath">>,
   {ok, Db} = rocker:open(Path),
   ok = rocker:put(Db, <<"k0">>, <<"v0">>),
-  {ok, 4} = rocker:tx(Db, [
+  {ok, 4} = rocker:write_batch(Db, [
     {put, <<"k1">>, <<"v1">>},
     {put, <<"k2">>, <<"v2">>},
     {delete, <<"k0">>},
@@ -300,7 +300,7 @@ delete_range(_) ->
   Path = <<"/project/priv/db_range_delete">>,
   {ok, Db} = rocker:open(Path),
   ok = rocker:put(Db, <<"k0">>, <<"v0">>),
-  {ok, 5} = rocker:tx(Db, [
+  {ok, 5} = rocker:write_batch(Db, [
     {put, <<"k1">>, <<"v1">>},
     {put, <<"k2">>, <<"v2">>},
     {put, <<"k3">>, <<"v3">>},
@@ -319,7 +319,7 @@ delete_range(_) ->
 multi_get(_) ->
   Path = <<"/project/priv/db_multi_get">>,
   {ok, Db} = rocker:open(Path),
-  {ok, 3} = rocker:tx(Db, [
+  {ok, 3} = rocker:write_batch(Db, [
     {put, <<"k1">>, <<"v1">>},
     {put, <<"k2">>, <<"v2">>},
     {put, <<"k3">>, <<"v3">>}
@@ -453,7 +453,7 @@ iterator_range_start(_) ->
   Path = <<"/project/priv/db_create_iterator_range">>,
   rocker:destroy(Path),
   {ok, Db} = rocker:open(Path),
-  {ok, 5} = rocker:tx(Db, [
+  {ok, 5} = rocker:write_batch(Db, [
     {put, <<"k1">>, <<"v1">>},
     {put, <<"k2">>, <<"v2">>},
     {put, <<"k3">>, <<"v3">>},
@@ -472,7 +472,7 @@ iterator_range_end(_) ->
   Path = <<"/project/priv/db_iterator_range_end">>,
   rocker:destroy(Path),
   {ok, Db} = rocker:open(Path),
-  {ok, 5} = rocker:tx(Db, [
+  {ok, 5} = rocker:write_batch(Db, [
     {put, <<"k1">>, <<"v1">>},
     {put, <<"k2">>, <<"v2">>},
     {put, <<"k3">>, <<"v3">>},
@@ -491,7 +491,7 @@ iterator_range_from(_) ->
   Path = <<"/project/priv/db_iterator_range_from">>,
   rocker:destroy(Path),
   {ok, Db} = rocker:open(Path),
-  {ok, 5} = rocker:tx(Db, [
+  {ok, 5} = rocker:write_batch(Db, [
     {put, <<"k1">>, <<"v1">>},
     {put, <<"k2">>, <<"v2">>},
     {put, <<"k3">>, <<"v3">>},
@@ -510,7 +510,7 @@ iterator_range_from_reverse(_) ->
   Path = <<"/project/priv/db_iterator_range_from_reverse">>,
   rocker:destroy(Path),
   {ok, Db} = rocker:open(Path),
-  {ok, 5} = rocker:tx(Db, [
+  {ok, 5} = rocker:write_batch(Db, [
     {put, <<"k1">>, <<"v1">>},
     {put, <<"k2">>, <<"v2">>},
     {put, <<"k3">>, <<"v3">>},
@@ -529,7 +529,7 @@ iterator_range_undefined_left_border(_) ->
   Path = <<"/project/priv/db_iterator_range_undefined_left_border">>,
   rocker:destroy(Path),
   {ok, Db} = rocker:open(Path),
-  {ok, 5} = rocker:tx(Db, [
+  {ok, 5} = rocker:write_batch(Db, [
     {put, <<"k1">>, <<"v1">>},
     {put, <<"k2">>, <<"v2">>},
     {put, <<"k3">>, <<"v3">>},
@@ -549,7 +549,7 @@ iterator_range_undefined_right_border(_) ->
   Path = <<"/project/priv/db_iterator_range_undefined_right_border">>,
   rocker:destroy(Path),
   {ok, Db} = rocker:open(Path),
-  {ok, 5} = rocker:tx(Db, [
+  {ok, 5} = rocker:write_batch(Db, [
     {put, <<"k1">>, <<"v1">>},
     {put, <<"k2">>, <<"v2">>},
     {put, <<"k3">>, <<"v3">>},
@@ -570,7 +570,7 @@ iterator_range_undefined_both_borders(_) ->
   Path = <<"/project/priv/db_iterator_range_undefined_both_borders">>,
   rocker:destroy(Path),
   {ok, Db} = rocker:open(Path),
-  {ok, 5} = rocker:tx(Db, [
+  {ok, 5} = rocker:write_batch(Db, [
     {put, <<"k1">>, <<"v1">>},
     {put, <<"k2">>, <<"v2">>},
     {put, <<"k3">>, <<"v3">>},
@@ -843,7 +843,7 @@ write_batch_cf(_) ->
   ok = rocker:put(Db, <<"k0">>, <<"v0">>),
   ok = rocker:put_cf(Db, Cf1, <<"k0">>, <<"v0">>),
   ok = rocker:put_cf(Db, Cf2, <<"k0">>, <<"v0">>),
-  {ok, 12} = rocker:tx(Db, [
+  {ok, 12} = rocker:write_batch(Db, [
     {put, <<"k1">>, <<"v1">>},
     {put, <<"k2">>, <<"v2">>},
     {delete, <<"k0">>, <<"v0">>},
@@ -884,7 +884,7 @@ delete_range_cf(_) ->
   Cf = <<"test_cf1">>,
   ok = rocker:create_cf(Db, Cf),
 
-  {ok, 5} = rocker:tx(Db, [
+  {ok, 5} = rocker:write_batch(Db, [
     {put_cf, Cf, <<"k1">>, <<"v1">>},
     {put_cf, Cf, <<"k2">>, <<"v2">>},
     {put_cf, Cf, <<"k3">>, <<"v3">>},
@@ -912,7 +912,7 @@ multi_get_cf(_) ->
   Cf3 = <<"test_cf3">>,
   ok = rocker:create_cf(Db, Cf3),
 
-  {ok, 5} = rocker:tx(Db, [
+  {ok, 5} = rocker:write_batch(Db, [
     {put_cf, Cf1, <<"k1">>, <<"v1">>},
     {put_cf, Cf2, <<"k2">>, <<"v2">>},
     {put_cf, Cf3, <<"k3">>, <<"v3">>},
@@ -978,7 +978,7 @@ create_snapshot(_) ->
   Path = <<"/project/priv/db_create_snapshot">>,
   rocker:destroy(Path),
   {ok, Db} = rocker:open(Path),
-  {ok, 2} = rocker:tx(Db, [
+  {ok, 2} = rocker:write_batch(Db, [
     {put, <<"k1">>, <<"v1">>},
     {put, <<"k2">>, <<"v2">>}
   ]),
@@ -996,7 +996,7 @@ snapshot_multi_get(_) ->
   Path = <<"/project/priv/db_snapshot_multi_get">>,
   rocker:destroy(Path),
   {ok, Db} = rocker:open(Path),
-  {ok, 3} = rocker:tx(Db, [
+  {ok, 3} = rocker:write_batch(Db, [
     {put, <<"k1">>, <<"v1">>},
     {put, <<"k2">>, <<"v2">>},
     {put, <<"k3">>, <<"v3">>}
@@ -1058,7 +1058,7 @@ snapshot_multi_get_cf(_) ->
   Cf3 = <<"test_cf3">>,
   ok = rocker:create_cf(Db, Cf3),
 
-  {ok, 3} = rocker:tx(Db, [
+  {ok, 3} = rocker:write_batch(Db, [
     {put_cf, Cf1, <<"k1">>, <<"v1">>},
     {put_cf, Cf2, <<"k2">>, <<"v2">>},
     {put_cf, Cf3, <<"k3">>, <<"v3">>}
@@ -1066,7 +1066,7 @@ snapshot_multi_get_cf(_) ->
 
   {ok, Snap} = rocker:snapshot(Db),
 
-  {ok, 3} = rocker:tx(Db, [
+  {ok, 3} = rocker:write_batch(Db, [
     {put_cf, Cf1, <<"k11">>, <<"v11">>},
     {put_cf, Cf2, <<"k22">>, <<"v23">>},
     {put_cf, Cf3, <<"k33">>, <<"v33">>}

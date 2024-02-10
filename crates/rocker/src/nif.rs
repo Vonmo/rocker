@@ -179,7 +179,7 @@ fn delete<'a>(
 }
 
 #[rustler::nif(schedule = "DirtyIo")]
-fn tx<'a>(env: Env<'a>, resource: ResourceArc<DbResource>, txs: Term<'a>) -> NifResult<Term<'a>> {
+fn write_batch<'a>(env: Env<'a>, resource: ResourceArc<DbResource>, txs: Term<'a>) -> NifResult<Term<'a>> {
     let db_guard = resource.write();
     let iter: ListIterator = txs.decode()?;
     let mut batch = WriteBatch::default();

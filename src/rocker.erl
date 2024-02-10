@@ -17,7 +17,7 @@
     get/2,
     get/3,
     delete/2,
-    tx/2,
+    write_batch/2,
     iterator/2,
     iterator_range/5,
     iterator_range/4,
@@ -119,7 +119,7 @@ get(DbRef, Key, Default) ->
 delete(_DbRef, _Key) ->
     not_loaded(?LINE).
 
-tx(_DbRef, _Txs) ->
+write_batch(_DbRef, _Ops) ->
     not_loaded(?LINE).
 
 iterator(_DbRef, _Mode) ->
