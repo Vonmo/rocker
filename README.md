@@ -12,7 +12,7 @@ Rocker is NIF for Erlang which uses Rust binding for [RocksDB](https://github.co
 ## Rebar3 deps
 ```
 {deps, [
-   {rocker, "", {git, "git://github.com/Vonmo/rocker.git", {tag, "v8.1.1"}}},
+   {rocker, "", {git, "git://github.com/Vonmo/rocker.git", {tag, "v8.10.0"}}},
 ]}.
 ```
 
@@ -20,7 +20,7 @@ Rocker is NIF for Erlang which uses Rust binding for [RocksDB](https://github.co
 ```
 defp deps do
  [
-   {:rocker, git: "https://github.com/Vonmo/rocker.git", tag: "v8.1.1"}
+   {:rocker, git: "https://github.com/Vonmo/rocker.git", tag: "v8.10.0"}
  ]
 end
 ```
