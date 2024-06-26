@@ -319,10 +319,12 @@ delete_range(_) ->
 multi_get(_) ->
   Path = <<"/project/priv/db_multi_get">>,
   {ok, Db} = rocker:open(Path),
-  {ok, 3} = rocker:write_batch(Db, [
+  Rand = crypto:strong_rand_bytes(10),
+  {ok, 4} = rocker:write_batch(Db, [
     {put, <<"k1">>, <<"v1">>},
     {put, <<"k2">>, <<"v2">>},
-    {put, <<"k3">>, <<"v3">>}
+    {put, <<"k3">>, <<"v3">>},
+    {put, Rand, Rand}
   ]),
   {ok, [
     undefined,
@@ -330,14 +332,16 @@ multi_get(_) ->
     {ok, <<"v2">>},
     {ok, <<"v3">>},
     undefined,
-    undefined
+    undefined,
+    {ok, Rand}
   ]} = rocker:multi_get(Db, [
       <<"k0">>,
       <<"k1">>,
       <<"k2">>,
       <<"k3">>,
       <<"k4">>,
-      <<"k5">>
+      <<"k5">>,
+      Rand
   ]),
   ok.
 
@@ -685,7 +689,10 @@ put_cf_get_cf_multi(_) ->
   {ok, Db} = rocker:open(Path),
   ok = rocker:create_cf(Db, <<"testcf">>),
   ok = rocker:put_cf(Db, <<"testcf">>, <<"key">>, <<"value">>),
+  Rand = crypto:strong_rand_bytes(10),
+  ok = rocker:put_cf(Db, <<"testcf">>, Rand, Rand),
   {ok, <<"value">>} = rocker:get_cf(Db, <<"testcf">>, <<"key">>),
+  {ok, Rand} = rocker:get_cf(Db, <<"testcf">>, Rand),
   undefined = rocker:get_cf(Db, <<"testcf">>, <<"unknown">>),
   ok.
 
@@ -912,12 +919,15 @@ multi_get_cf(_) ->
   Cf3 = <<"test_cf3">>,
   ok = rocker:create_cf(Db, Cf3),
 
-  {ok, 5} = rocker:write_batch(Db, [
+  Rand = crypto:strong_rand_bytes(10),
+
+  {ok, 6} = rocker:write_batch(Db, [
     {put_cf, Cf1, <<"k1">>, <<"v1">>},
     {put_cf, Cf2, <<"k2">>, <<"v2">>},
     {put_cf, Cf3, <<"k3">>, <<"v3">>},
     {put_cf, Cf1, <<"k4">>, <<"v4">>},
-    {put_cf, Cf2, <<"k5">>, <<"v5">>}
+    {put_cf, Cf2, <<"k5">>, <<"v5">>},
+    {put_cf, Cf2, Rand, Rand}
   ]),
 
   {ok, [
@@ -932,6 +942,7 @@ multi_get_cf(_) ->
     undefined,
     undefined,
     {ok, <<"v5">>},
+    {ok, Rand},
 
     undefined,
     undefined,
@@ -950,6 +961,7 @@ multi_get_cf(_) ->
     {Cf2, <<"k3">>},
     {Cf2, <<"k4">>},
     {Cf2, <<"k5">>},
+    {Cf2, Rand},
 
     {Cf3, <<"k1">>},
     {Cf3, <<"k2">>},

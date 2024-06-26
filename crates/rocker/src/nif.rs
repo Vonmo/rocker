@@ -616,10 +616,10 @@ fn multi_get<'a>(
 ) -> NifResult<Term<'a>> {
     let db_guard = resource.read();
     let keys_iter: ListIterator = keys.decode()?;
-    let mut keys_list: Vec<String> = Vec::new();
+    let mut keys_list: Vec<Vec<u8>> = Vec::new();
     for elem in keys_iter {
-        let k: String = elem.decode()?;
-        keys_list.push(k);
+        let k: Binary = elem.decode()?;
+        keys_list.push(k.to_vec());
     }
     let values = db_guard.multi_get(keys_list);
     let mut result: Vec<Term> = Vec::new();
